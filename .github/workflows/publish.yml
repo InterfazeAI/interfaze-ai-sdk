@@ -24,6 +24,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test
       - run: pnpm build
       - name: Validate package (publint + are-the-types-wrong)
         run: pnpm check:pkg
@@ -44,5 +45,6 @@ jobs:
           node-version: '22.x'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test
       - name: Publish to JSR
         run: npx jsr publish --allow-slow-types

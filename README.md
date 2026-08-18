@@ -99,9 +99,11 @@ A web search backs the answer here — the sources land on `providerMetadata.int
 
 ### Streaming
 
-`streamText` works the same way; the inline `<think>` / `<precontext>` side-channels are stripped from the visible stream and returned on `providerMetadata` when it finishes.
+`streamText` streams the reply as it's generated; the inline `<think>` / `<precontext>` side-channels are stripped from the visible text, and `reasoning` is attached to `providerMetadata` when the stream finishes. Streamed `precontext` is only emitted when the provider is created with `showAdditionalInfo: true` (see [Client options](#client-options)); otherwise it's `undefined` at finish.
 
 ```ts
+const interfaze = createInterfaze({ showAdditionalInfo: true }); // for streamed precontext
+
 const { textStream, providerMetadata } = streamText({
   model: interfaze('interfaze-beta'),
   prompt: "Summarize this week's top AI research and cite your sources.",
@@ -109,7 +111,7 @@ const { textStream, providerMetadata } = streamText({
 
 for await (const delta of textStream) process.stdout.write(delta);
 
-const meta = await providerMetadata; // meta?.interfaze?.precontext (the sources), .reasoning
+const meta = await providerMetadata; // meta?.interfaze?.reasoning; .precontext when showAdditionalInfo is set
 ```
 
 ## Structured output
