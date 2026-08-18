@@ -60,3 +60,24 @@ const video = await generateText({
   ],
 });
 console.log('Video:', video.text);
+
+// Audio — any of wav / mp3 / m4a / ogg / flac.
+const audio = await generateText({
+  model: interfaze('interfaze-beta'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Transcribe the first sentence.' },
+        {
+          type: 'file',
+          mediaType: 'audio/mpeg',
+          data: new URL(
+            'https://r2public.jigsawstack.com/interfaze/examples/stt_call.mp3',
+          ),
+        },
+      ],
+    },
+  ],
+});
+console.log('Audio:', audio.text);

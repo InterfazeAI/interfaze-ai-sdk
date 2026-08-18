@@ -26,8 +26,6 @@ export const interfazeGuardCodes = [
 ] as const;
 
 export const interfazeLanguageModelChatOptions = z.object({
-  /** Feed precomputed tool output to skip Interfaze's internal tool run. */
-  precontext: z.array(z.unknown()).optional(),
   /** Enable guardrail categories; a match returns `unsafe <code>` as the message content. */
   guard: z.array(z.enum(interfazeGuardCodes)).optional(),
   /** Reasoning effort; also accepts Interfaze's `on` / `off` / `auto`. */

@@ -121,35 +121,6 @@ describe('InterfazeProvider', () => {
       );
     });
 
-    it('should normalize a non-array precontext to a single-element array', () => {
-      const provider = createInterfaze();
-      const model = provider('interfaze-beta') as any;
-
-      expect(
-        model.config.transformRequestBody({
-          model: 'interfaze-beta',
-          messages: [],
-          precontext: { name: 'ocr', result: 'text' },
-        }),
-      ).toEqual({
-        model: 'interfaze-beta',
-        messages: [],
-        precontext: [{ name: 'ocr', result: 'text' }],
-      });
-    });
-
-    it('should leave an array precontext untouched', () => {
-      const provider = createInterfaze();
-      const model = provider('interfaze-beta') as any;
-
-      const args = {
-        model: 'interfaze-beta',
-        messages: [],
-        precontext: [{ name: 'ocr', result: 'text' }],
-      };
-      expect(model.config.transformRequestBody(args)).toEqual(args);
-    });
-
     it('serializes guard codes into a <guard> system message', () => {
       const model = createInterfaze()('interfaze-beta') as any;
       const out = model.config.transformRequestBody({

@@ -81,19 +81,7 @@ for (const p of providerMetadata?.interfaze?.precontext ?? []) {
 }
 ```
 
-You can also feed precomputed tool output _in_ to skip Interfaze's internal tool run:
-
-```ts
-await generateText({
-  model: interfaze('interfaze-beta'),
-  prompt: 'Extract the total from the receipt.',
-  providerOptions: {
-    interfaze: {
-      precontext: [{ name: 'ocr', result: { extracted_text: '...' } }],
-    },
-  },
-});
-```
+Precontext is output-only — it reports what Interfaze did while answering. There is no way to feed it back in.
 
 ## Text
 
@@ -197,7 +185,19 @@ A semantic-cache hit replays a stored answer without reasoning — set `bypassCa
 
 ## Multimodal
 
-Images, PDFs, and video use standard AI SDK content parts. Pass a public URL — Interfaze fetches it server-side — or raw bytes:
+Images, audio, video and documents all use standard AI SDK content parts. Pass a public URL — Interfaze fetches it server-side, so nothing is downloaded and re-encoded on the way out — or raw bytes:
+
+Supported media types:
+
+| Kind      | Types                                                                                        |
+| --------- | -------------------------------------------------------------------------------------------- |
+| Image     | `image/jpeg` `image/png` `image/webp` `image/bmp` `image/heic` `image/heif`                  |
+| Audio     | `audio/wav` `audio/mpeg` `audio/mp4` `audio/ogg` `audio/flac`                                |
+| Video     | `video/mp4` `video/quicktime` `video/webm` `video/3gpp` `video/x-msvideo` `video/x-matroska` |
+| Documents | `application/pdf`, `.docx`, `application/json` `application/xml` `application/yaml`          |
+| Text      | `text/plain` `text/csv` `text/markdown` `text/tab-separated-values`                          |
+
+`image/gif` and `image/avif` are rejected by the API.
 
 ```ts
 await generateText({
