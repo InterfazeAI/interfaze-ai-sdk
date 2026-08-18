@@ -5,6 +5,7 @@
   "type": "module",
   "license": "MIT",
   "author": "InterfazeAI",
+  "packageManager": "pnpm@11.13.0",
   "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
