@@ -14,6 +14,6 @@ npx tsx examples/quickstart.ts
 - `tools.ts` — function calling (tool round-trip)
 - `reasoning.ts` — `reasoningEffort` → `providerMetadata.interfaze.reasoning`
 - `guardrails.ts` — `guard` categories; a block returns `unsafe <code>`
-- `multimodal.ts` — image, PDF, and video content parts
-- `precontext.ts` — precontext output, and feeding precontext in to skip tools
+- `multimodal.ts` — image, audio, PDF, and video content parts
+- `precontext.ts` — precontext output (the internal tools Interfaze ran)
 - `errors.ts` — catching and narrowing `APICallError`

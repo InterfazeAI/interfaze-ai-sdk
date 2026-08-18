@@ -14,22 +14,30 @@ import { z } from 'zod/v4';
 import { InterfazeChatLanguageModel } from './interfaze-chat-language-model';
 import type { InterfazeChatModelId } from './interfaze-chat-language-model-options';
 import { createInterfazeMetadataExtractor } from './interfaze-metadata-extractor';
-import { resolveInterfazeVideoFileParts } from './interfaze-video-parts';
+import { resolveInterfazeFileParts } from './interfaze-file-parts';
 import { INTERFAZE_BASE_URL } from './side-channels';
 import { VERSION } from './version';
 
+// Interfaze nests errors under `error` on both paths: the JSON body built by
+// `buildErrorResponse`/`formatErrorResponse`, and the SSE `event: error` chunk
+// built by `handleErrorStreamingResponse`.
 const interfazeErrorSchema = z.object({
-  message: z.string(),
-  type: z.string().nullish(),
-  param: z.any().nullish(),
-  code: z.union([z.string(), z.number()]).nullish(),
+  error: z.object({
+    message: z.string(),
+    type: z.string().nullish(),
+    param: z.any().nullish(),
+    code: z.union([z.string(), z.number()]).nullish(),
+    request_id: z.string().nullish(),
+  }),
 });
 
 export type InterfazeErrorData = z.infer<typeof interfazeErrorSchema>;
 
+const HTTPS_URL = /^https:\/\/.+$/;
+
 const interfazeErrorStructure: ProviderErrorStructure<InterfazeErrorData> = {
   errorSchema: interfazeErrorSchema,
-  errorToMessage: data => data.message,
+  errorToMessage: data => data.error.message,
 };
 
 /** Serialize guardrail categories into a `<guard>…</guard>` system message. */
@@ -56,12 +64,7 @@ function injectGuardTag(
 function transformInterfazeRequestBody(
   args: Record<string, any>,
 ): Record<string, any> {
-  let out = resolveInterfazeVideoFileParts(args);
-
-  // `precontext` may arrive as a single object; the API expects an array.
-  if (out.precontext !== undefined && !Array.isArray(out.precontext)) {
-    out = { ...out, precontext: [out.precontext] };
-  }
+  let out = resolveInterfazeFileParts(args);
 
   // `guard` is serialized into a `<guard>…</guard>` system message.
   if (out.guard !== undefined) {
@@ -126,9 +129,16 @@ export function createInterfaze(
       includeUsage: true,
       transformRequestBody: transformInterfazeRequestBody,
       metadataExtractor: createInterfazeMetadataExtractor(),
-      // Interfaze fetches video URLs server-side,
-      // so pass URLs through instead of downloading them.
-      supportedUrls: () => ({ 'video/*': [/^https:\/\/.+$/] }),
+      // Interfaze fetches attachment URLs server-side (and sniffs the real
+      // media type off the bytes), so URLs are forwarded rather than
+      // downloaded and re-encoded as base64 here. `text/*` is left off: the
+      // converter inlines those as text parts, which needs no fetch at all.
+      supportedUrls: () => ({
+        'image/*': [HTTPS_URL],
+        'audio/*': [HTTPS_URL],
+        'video/*': [HTTPS_URL],
+        'application/*': [HTTPS_URL],
+      }),
     });
   };
 

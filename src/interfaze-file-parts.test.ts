@@ -1,11 +1,11 @@
 import type { LanguageModelV4Prompt } from '@ai-sdk/provider';
 import { describe, expect, it } from 'vitest';
 import {
-  injectInterfazeVideoSentinels,
-  resolveInterfazeVideoFileParts,
-} from './interfaze-video-parts';
+  injectInterfazeFileSentinels,
+  resolveInterfazeFileParts,
+} from './interfaze-file-parts';
 
-describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () => {
+describe('injectInterfazeFileSentinels + resolveInterfazeFileParts', () => {
   it('round-trips a data: video part that is the only content in the message', () => {
     const prompt: LanguageModelV4Prompt = [
       {
@@ -21,7 +21,7 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
       },
     ];
 
-    const injected = injectInterfazeVideoSentinels(prompt);
+    const injected = injectInterfazeFileSentinels(prompt);
 
     const args = {
       messages: [
@@ -29,7 +29,7 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
       ],
     };
 
-    const resolved = resolveInterfazeVideoFileParts(args);
+    const resolved = resolveInterfazeFileParts(args);
     expect(resolved.messages[0].content).toEqual([
       {
         type: 'file',
@@ -57,7 +57,7 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
       },
     ];
 
-    const injected = injectInterfazeVideoSentinels(prompt);
+    const injected = injectInterfazeFileSentinels(prompt);
     const args = {
       messages: [
         {
@@ -69,7 +69,7 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
       ],
     };
 
-    const resolved = resolveInterfazeVideoFileParts(args);
+    const resolved = resolveInterfazeFileParts(args);
     expect(resolved.messages[0].content).toEqual([
       { type: 'text', text: 'What happens in this clip?' },
       {
@@ -97,7 +97,7 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
       },
     ];
 
-    const injected = injectInterfazeVideoSentinels(prompt);
+    const injected = injectInterfazeFileSentinels(prompt);
     expect(injected).toEqual(prompt);
   });
 
@@ -105,6 +105,56 @@ describe('injectInterfazeVideoSentinels + resolveInterfazeVideoFileParts', () =>
     const args = {
       messages: [{ role: 'user', content: 'just text' }],
     };
-    expect(resolveInterfazeVideoFileParts(args)).toEqual(args);
+    expect(resolveInterfazeFileParts(args)).toEqual(args);
   });
+});
+
+describe('media types routed to the Interfaze file shape', () => {
+  const asFilePart = (mediaType: string) => {
+    const prompt: LanguageModelV4Prompt = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            mediaType,
+            data: { type: 'url', url: new URL('https://example.com/f') },
+          },
+        ],
+      },
+    ];
+    const injected = injectInterfazeFileSentinels(prompt);
+    const part = (injected[0] as any).content[0];
+    return part.type === 'text' && part.text.startsWith('ai-sdk/interfaze:')
+      ? 'sentinel'
+      : 'native';
+  };
+
+  // Everything the openai-compatible converter would reject or mis-encode.
+  it.each([
+    'audio/wav',
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/ogg',
+    'audio/flac',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+    'video/x-matroska',
+    'application/pdf',
+    'application/json',
+    'application/xml',
+    'application/yaml',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ])('routes %s through the sentinel', mediaType => {
+    expect(asFilePart(mediaType)).toBe('sentinel');
+  });
+
+  // Handled natively by the converter in a shape Interfaze already accepts.
+  it.each(['image/png', 'image/jpeg', 'image/webp', 'text/csv', 'text/plain'])(
+    'leaves %s on the native path',
+    mediaType => {
+      expect(asFilePart(mediaType)).toBe('native');
+    },
+  );
 });

@@ -14,7 +14,7 @@ import {
   WORKFLOW_SERIALIZE,
 } from '@ai-sdk/provider-utils';
 import type { InterfazeChatModelId } from './interfaze-chat-language-model-options';
-import { injectInterfazeVideoSentinels } from './interfaze-video-parts';
+import { injectInterfazeFileSentinels } from './interfaze-file-parts';
 import {
   SideChannelFilter,
   stripJsonFence,
@@ -87,7 +87,7 @@ export class InterfazeChatLanguageModel
   ): Promise<LanguageModelV4GenerateResult> {
     const result = await super.doGenerate({
       ...options,
-      prompt: injectInterfazeVideoSentinels(options.prompt),
+      prompt: injectInterfazeFileSentinels(options.prompt),
     });
 
     let extractedReasoning: string | undefined;
@@ -131,7 +131,7 @@ export class InterfazeChatLanguageModel
   ): Promise<LanguageModelV4StreamResult> {
     const result = await super.doStream({
       ...options,
-      prompt: injectInterfazeVideoSentinels(options.prompt),
+      prompt: injectInterfazeFileSentinels(options.prompt),
     });
 
     const filter = new SideChannelFilter();
