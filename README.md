@@ -22,11 +22,11 @@ Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaz
 Import the default `interfaze` instance, or build one with `createInterfaze`:
 
 ```ts
-import { createInterfaze, interfaze } from "@interfaze-ai/ai-sdk-provider";
+import { createInterfaze, interfaze } from '@interfaze-ai/ai-sdk-provider';
 
-interfaze("interfaze-beta"); // default, reads INTERFAZE_API_KEY
+interfaze('interfaze-beta'); // default, reads INTERFAZE_API_KEY
 
-const custom = createInterfaze({ apiKey: "sk_..." });
+const custom = createInterfaze({ apiKey: 'sk_...' });
 ```
 
 ## Your first request
@@ -34,27 +34,27 @@ const custom = createInterfaze({ apiKey: "sk_..." });
 Drop an image into the prompt and get a typed object back — Interfaze runs OCR under the hood and hands you both the structured result and the raw OCR that produced it:
 
 ```ts
-import { interfaze } from "@interfaze-ai/ai-sdk-provider";
-import { generateObject } from "ai";
-import { z } from "zod";
+import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 const { object, providerMetadata } = await generateObject({
-  model: interfaze("interfaze-beta"),
+  model: interfaze('interfaze-beta'),
   schema: z.object({
     first_name: z.string(),
     last_name: z.string(),
-    dob: z.string().describe("Date of birth on the ID"),
+    dob: z.string().describe('Date of birth on the ID'),
     licence_number: z.string(),
   }),
   messages: [
     {
-      role: "user",
+      role: 'user',
       content: [
-        { type: "text", text: "Extract the details from this ID." },
+        { type: 'text', text: 'Extract the details from this ID.' },
         {
-          type: "image",
+          type: 'image',
           image: new URL(
-            "https://r2public.jigsawstack.com/interfaze/examples/id.jpg",
+            'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
           ),
         },
       ],
@@ -63,7 +63,7 @@ const { object, providerMetadata } = await generateObject({
 });
 
 console.log(object); // { first_name, last_name, dob, licence_number }
-console.log("OCR result:", providerMetadata?.interfaze?.precontext?.[0]); // the raw OCR
+console.log('OCR result:', providerMetadata?.interfaze?.precontext?.[0]); // the raw OCR
 ```
 
 ## Precontext
@@ -72,8 +72,8 @@ Alongside the answer, a response carries `precontext` — the raw output of any 
 
 ```ts
 const { text, providerMetadata } = await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "Which US public companies reported earnings today?",
+  model: interfaze('interfaze-beta'),
+  prompt: 'Which US public companies reported earnings today?',
 });
 
 for (const p of providerMetadata?.interfaze?.precontext ?? []) {
@@ -81,15 +81,15 @@ for (const p of providerMetadata?.interfaze?.precontext ?? []) {
 }
 ```
 
-You can also feed precomputed tool output *in* to skip Interfaze's internal tool run:
+You can also feed precomputed tool output _in_ to skip Interfaze's internal tool run:
 
 ```ts
 await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "Extract the total from the receipt.",
+  model: interfaze('interfaze-beta'),
+  prompt: 'Extract the total from the receipt.',
   providerOptions: {
     interfaze: {
-      precontext: [{ name: "ocr", result: { extracted_text: "..." } }],
+      precontext: [{ name: 'ocr', result: { extracted_text: '...' } }],
     },
   },
 });
@@ -98,12 +98,12 @@ await generateText({
 ## Text
 
 ```ts
-import { interfaze } from "@interfaze-ai/ai-sdk-provider";
-import { generateText } from "ai";
+import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "Which US public companies reported earnings today?",
+  model: interfaze('interfaze-beta'),
+  prompt: 'Which US public companies reported earnings today?',
 });
 ```
 
@@ -115,7 +115,7 @@ A web search backs the answer here — the sources land on `providerMetadata.int
 
 ```ts
 const { textStream, providerMetadata } = streamText({
-  model: interfaze("interfaze-beta"),
+  model: interfaze('interfaze-beta'),
   prompt: "Summarize this week's top AI research and cite your sources.",
 });
 
@@ -129,12 +129,12 @@ const meta = await providerMetadata; // meta?.interfaze?.precontext (the sources
 Interfaze supports structured outputs, so `generateObject` / `streamObject` work with a Zod schema:
 
 ```ts
-import { interfaze } from "@interfaze-ai/ai-sdk-provider";
-import { generateObject } from "ai";
-import { z } from "zod";
+import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 const { object } = await generateObject({
-  model: interfaze("interfaze-beta"),
+  model: interfaze('interfaze-beta'),
   schema: z.object({
     merchant: z.string(),
     total: z.number(),
@@ -142,12 +142,12 @@ const { object } = await generateObject({
   }),
   messages: [
     {
-      role: "user",
+      role: 'user',
       content: [
-        { type: "text", text: "Extract this receipt." },
+        { type: 'text', text: 'Extract this receipt.' },
         {
-          type: "image",
-          image: new URL("https://jigsawstack.com/preview/vocr-example.jpg"),
+          type: 'image',
+          image: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
         },
       ],
     },
@@ -160,20 +160,20 @@ const { object } = await generateObject({
 Interfaze supports tools — define them and the AI SDK runs the usual tool loop:
 
 ```ts
-import { interfaze } from "@interfaze-ai/ai-sdk-provider";
-import { generateText, tool } from "ai";
-import { z } from "zod";
+import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
 
 const { text, toolResults } = await generateText({
-  model: interfaze("interfaze-beta"),
+  model: interfaze('interfaze-beta'),
   tools: {
     weather: tool({
-      description: "Get the current weather for a location",
+      description: 'Get the current weather for a location',
       inputSchema: z.object({ location: z.string() }),
       execute: async ({ location }) => ({ location, temperatureF: 72 }),
     }),
   },
-  prompt: "Use the weather tool to get the weather in San Francisco.",
+  prompt: 'Use the weather tool to get the weather in San Francisco.',
 });
 ```
 
@@ -185,9 +185,9 @@ Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's
 
 ```ts
 const { text, providerMetadata } = await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "Which region should we launch in first, and why?",
-  providerOptions: { interfaze: { reasoningEffort: "high" } },
+  model: interfaze('interfaze-beta'),
+  prompt: 'Which region should we launch in first, and why?',
+  providerOptions: { interfaze: { reasoningEffort: 'high' } },
 });
 
 providerMetadata?.interfaze?.reasoning; // string | undefined
@@ -201,16 +201,16 @@ Images, PDFs, and video use standard AI SDK content parts. Pass a public URL —
 
 ```ts
 await generateText({
-  model: interfaze("interfaze-beta"),
+  model: interfaze('interfaze-beta'),
   messages: [
     {
-      role: "user",
+      role: 'user',
       content: [
-        { type: "text", text: "Summarize this document." },
+        { type: 'text', text: 'Summarize this document.' },
         {
-          type: "file",
-          mediaType: "application/pdf",
-          data: new URL("https://arxiv.org/pdf/1706.03762"),
+          type: 'file',
+          mediaType: 'application/pdf',
+          data: new URL('https://arxiv.org/pdf/1706.03762'),
         },
       ],
     },
@@ -230,12 +230,12 @@ Enable safety categories with `guard`; a blocked request comes back as a normal 
 
 ```ts
 const { text } = await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "...",
-  providerOptions: { interfaze: { guard: ["S1", "S10", "S12_IMAGE"] } },
+  model: interfaze('interfaze-beta'),
+  prompt: '...',
+  providerOptions: { interfaze: { guard: ['S1', 'S10', 'S12_IMAGE'] } },
 });
 
-if (text.startsWith("unsafe ")) {
+if (text.startsWith('unsafe ')) {
   // blocked — text is e.g. "unsafe S1"
 }
 ```
@@ -248,8 +248,8 @@ Interfaze returns fields a plain chat provider drops. They land on `providerMeta
 
 ```ts
 const result = await generateText({
-  model: interfaze("interfaze-beta"),
-  prompt: "What is the weather in San Francisco?",
+  model: interfaze('interfaze-beta'),
+  prompt: 'What is the weather in San Francisco?',
 });
 
 result.providerMetadata?.interfaze?.vcache; // boolean — semantic-cache hit
@@ -276,10 +276,10 @@ const interfaze = createInterfaze({
 Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body:
 
 ```ts
-import { APICallError } from "ai";
+import { APICallError } from 'ai';
 
 try {
-  await generateText({ model: interfaze("interfaze-beta"), prompt: "..." });
+  await generateText({ model: interfaze('interfaze-beta'), prompt: '...' });
 } catch (error) {
   if (APICallError.isInstance(error)) {
     error.statusCode; // e.g. 400, 401, 429
@@ -290,21 +290,21 @@ try {
 
 ## Capabilities
 
-| Use case                                | Entry point                                              |
-| --------------------------------------- | -------------------------------------------------------- |
-| [Text](#text)                           | `generateText`                                           |
-| [Streaming](#streaming)                 | `streamText`                                             |
-| [Structured output](#structured-output) | `generateObject` / `streamObject`                        |
-| [Tools](#tools)                         | `tools`                                                  |
-| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort`              |
-| [Multimodal](#multimodal)               | `image` / `file` content parts                           |
-| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`                        |
-| [Precontext](#precontext)               | `providerMetadata.interfaze.precontext`                  |
-| [Semantic cache](#interfaze-metadata)   | `providerMetadata.interfaze.vcache`                      |
+| Use case                                | Entry point                                 |
+| --------------------------------------- | ------------------------------------------- |
+| [Text](#text)                           | `generateText`                              |
+| [Streaming](#streaming)                 | `streamText`                                |
+| [Structured output](#structured-output) | `generateObject` / `streamObject`           |
+| [Tools](#tools)                         | `tools`                                     |
+| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort` |
+| [Multimodal](#multimodal)               | `image` / `file` content parts              |
+| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`           |
+| [Precontext](#precontext)               | `providerMetadata.interfaze.precontext`     |
+| [Semantic cache](#interfaze-metadata)   | `providerMetadata.interfaze.vcache`         |
 
 ## Examples
 
-Runnable snippets in [`examples/`](./examples). Set `INTERFAZE_API_KEY`, then `npx tsx examples/basic.ts`.
+Runnable snippets in [`examples/`](./examples) — one per feature (quickstart, streaming, structured output, tools, reasoning, guardrails, multimodal, precontext, errors). Set `INTERFAZE_API_KEY`, then `npx tsx examples/quickstart.ts`.
 
 ## Documentation
 
