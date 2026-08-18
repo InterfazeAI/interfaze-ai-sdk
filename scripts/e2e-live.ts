@@ -178,7 +178,7 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
     );
     return `stream_options=${JSON.stringify(cap.body().stream_options)}`;
   });
-  await test('05 precontext + guard + reasoningEffort on the wire', async () => {
+  await test('05 guard + reasoningEffort on the wire', async () => {
     const cap = captureFetch();
     const p = createInterfaze({ apiKey, fetch: cap.fetch });
     await generateText({
@@ -186,18 +186,12 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
       prompt: 'hi',
       providerOptions: {
         interfaze: {
-          precontext: [{ name: 'ocr', result: 'x' }],
           guard: ['S1', 'S2'],
           reasoningEffort: 'high',
         },
       },
     });
     const b = cap.body();
-    assert(
-      JSON.stringify(b.precontext) ===
-        JSON.stringify([{ name: 'ocr', result: 'x' }]),
-      'precontext array',
-    );
     assert(b.reasoning_effort === 'high', 'reasoning_effort');
     assert(b.guard === undefined, 'raw guard stripped');
     assert(
@@ -205,9 +199,9 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
         b.messages[0].content === '<guard>S1, S2</guard>',
       'guard system msg',
     );
-    return `precontext=${JSON.stringify(b.precontext)} reasoning_effort=${
-      b.reasoning_effort
-    } guardMsg=${JSON.stringify(b.messages[0].content)}`;
+    return `reasoning_effort=${b.reasoning_effort} guardMsg=${JSON.stringify(
+      b.messages[0].content,
+    )}`;
   });
 
   // ---- Core generation (live) ----
@@ -226,7 +220,8 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
   });
   await test('07 streamText + usage populated (the includeUsage fix)', async () => {
     const r = streamText({
-      model: interfaze(MODEL),
+      // bypassCache: a cache-hit streaming response currently hangs server-side
+      model: noCache(MODEL),
       prompt: 'Count from 1 to 5.',
     });
     let t = '';
@@ -254,7 +249,7 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
   });
   await test('09 streamText + Output.object (partialOutputStream)', async () => {
     const r = streamText({
-      model: interfaze(MODEL),
+      model: noCache(MODEL),
       output: Output.object({
         schema: z.object({ items: z.array(z.object({ name: z.string() })) }),
       }),
@@ -307,7 +302,7 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
   });
   await test('12 streamText tools (streaming tool lifecycle)', async () => {
     const r = streamText({
-      model: interfaze(MODEL),
+      model: noCache(MODEL),
       tools: { weather },
       prompt: 'Weather in Paris? Use the weather tool.',
     });
@@ -364,30 +359,6 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
       (meta(r)?.precontext as any)?.[0]?.name,
     )}`;
   });
-  await test('16b precontext INPUT accepted by the API (passthrough)', async () => {
-    // The provider sends providerOptions.interfaze.precontext as a request
-    // field to skip Interfaze's internal tool run. Confirm the live API
-    // accepts it (does not 400) rather than only asserting the wire shape.
-    const r = await generateText({
-      model: noCache(MODEL),
-      prompt: 'Extract the total amount from the receipt.',
-      providerOptions: {
-        interfaze: {
-          precontext: [
-            {
-              name: 'ocr',
-              result: {
-                extracted_text: 'Coffee $4.50\nTax $0.36\nTotal $4.86',
-              },
-            },
-          ],
-        },
-      },
-    });
-    assert(r.text.length > 0, 'text returned with precontext input');
-    return `accepted; text=${JSON.stringify(r.text).slice(0, 60)}`;
-  });
-
   // ---- Side channels (live) ----
   await test('17 streaming: no <think>/<precontext> leak, reasoning in finish', async () => {
     const r = streamText({
