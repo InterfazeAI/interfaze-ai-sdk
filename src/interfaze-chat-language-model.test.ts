@@ -2,6 +2,7 @@ import type {
   LanguageModelV4Prompt,
   LanguageModelV4StreamPart,
 } from '@ai-sdk/provider';
+import type { FetchFunction } from '@ai-sdk/provider-utils';
 import fs from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { createInterfaze } from './interfaze-provider';
@@ -9,6 +10,16 @@ import { createInterfaze } from './interfaze-provider';
 const TEST_PROMPT: LanguageModelV4Prompt = [
   { role: 'user', content: [{ type: 'text', text: 'Hello' }] },
 ];
+
+const modelWith = (fetch: FetchFunction) =>
+  createInterfaze({ apiKey: 'test-api-key', fetch })('interfaze-beta');
+
+function visibleText(chunks: LanguageModelV4StreamPart[]): string {
+  return chunks
+    .filter(chunk => chunk.type === 'text-delta')
+    .map(chunk => (chunk as { delta: string }).delta)
+    .join('');
+}
 
 async function convertStreamToArray(
   stream: ReadableStream<LanguageModelV4StreamPart>,
@@ -54,9 +65,7 @@ function createStreamFixtureFetchMock(filename: string) {
 describe('doGenerate', () => {
   it('extracts vcache into providerMetadata.interfaze', async () => {
     const fetch = createJsonFixtureFetchMock('interfaze-basic');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const result = await model.doGenerate({ prompt: TEST_PROMPT });
 
@@ -68,9 +77,7 @@ describe('doGenerate', () => {
 
   it('extracts reasoning and precontext into providerMetadata.interfaze', async () => {
     const fetch = createJsonFixtureFetchMock('interfaze-precontext');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const result = await model.doGenerate({ prompt: TEST_PROMPT });
 
@@ -86,9 +93,7 @@ describe('doGenerate', () => {
 
   it('defensively strips inline <think> tags that leak into content', async () => {
     const fetch = createJsonFixtureFetchMock('interfaze-inline-tags');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const result = await model.doGenerate({ prompt: TEST_PROMPT });
 
@@ -103,9 +108,7 @@ describe('doGenerate', () => {
 
   it('unwraps the ```json fence in schema-less JSON mode', async () => {
     const fetch = createJsonFixtureFetchMock('interfaze-json-fence');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const result = await model.doGenerate({
       prompt: TEST_PROMPT,
@@ -119,9 +122,7 @@ describe('doGenerate', () => {
 
   it('does not unwrap the fence when a schema is present (json_schema mode)', async () => {
     const fetch = createJsonFixtureFetchMock('interfaze-json-fence');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const result = await model.doGenerate({
       prompt: TEST_PROMPT,
@@ -143,9 +144,7 @@ describe('doGenerate', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     await model.doGenerate({
       prompt: [
@@ -185,9 +184,7 @@ describe('doGenerate', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     await model.doGenerate({
       prompt: TEST_PROMPT,
@@ -210,17 +207,12 @@ describe('doGenerate', () => {
 describe('doStream', () => {
   it('strips a <think> block split across chunk boundaries and surfaces reasoning in finish metadata', async () => {
     const fetch = createStreamFixtureFetchMock('interfaze-think-stream');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const { stream } = await model.doStream({ prompt: TEST_PROMPT });
     const chunks = await convertStreamToArray(stream);
 
-    const textDeltas = chunks
-      .filter(chunk => chunk.type === 'text-delta')
-      .map(chunk => (chunk as { delta: string }).delta);
-    expect(textDeltas.join('')).toBe('It is sunny.');
+    expect(visibleText(chunks)).toBe('It is sunny.');
 
     const finish = chunks.at(-1);
     expect(finish?.type).toBe('finish');
@@ -233,18 +225,13 @@ describe('doStream', () => {
 
   it('emits an unterminated tag verbatim on a completed stream (it is prose, not a channel)', async () => {
     const fetch = createStreamFixtureFetchMock('interfaze-think-only-stream');
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const { stream } = await model.doStream({ prompt: TEST_PROMPT });
     const chunks = await convertStreamToArray(stream);
 
     // A completed response's unclosed tag is prose and must survive verbatim.
-    const textDeltas = chunks
-      .filter(chunk => chunk.type === 'text-delta')
-      .map(chunk => (chunk as { delta: string }).delta);
-    expect(textDeltas.join('')).toBe(
+    expect(visibleText(chunks)).toBe(
       'Wrap your reasoning in <think> tags so it stays hidden.',
     );
 
@@ -260,18 +247,13 @@ describe('doStream', () => {
     const fetch = createStreamFixtureFetchMock(
       'interfaze-truncated-think-stream',
     );
-    const model = createInterfaze({ apiKey: 'test-api-key', fetch })(
-      'interfaze-beta',
-    );
+    const model = modelWith(fetch);
 
     const { stream } = await model.doStream({ prompt: TEST_PROMPT });
     const chunks = await convertStreamToArray(stream);
 
     // A truncated `<think>` is dropped, not surfaced as the answer.
-    const textDeltas = chunks
-      .filter(chunk => chunk.type === 'text-delta')
-      .map(chunk => (chunk as { delta: string }).delta);
-    expect(textDeltas.join('')).toBe('');
+    expect(visibleText(chunks)).toBe('');
 
     const finish = chunks.at(-1);
     expect(finish?.type).toBe('finish');

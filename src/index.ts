@@ -8,5 +8,5 @@ export type {
   InterfazeChatModelId,
   InterfazeLanguageModelChatOptions,
 } from './interfaze-chat-language-model-options';
-export { INTERFAZE_BASE_URL, INTERFAZE_MODEL } from './side-channels';
+export { INTERFAZE_BASE_URL, INTERFAZE_MODEL } from './constants';
 export { VERSION } from './version';

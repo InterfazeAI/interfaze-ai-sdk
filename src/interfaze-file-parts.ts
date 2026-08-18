@@ -95,11 +95,13 @@ export function injectInterfazeFileSentinels(
         }
       }
 
-      const format = isFullMediaType(part.mediaType)
-        ? part.mediaType
-        : part.data.type === 'data'
-          ? resolveFullMediaType({ part })
-          : part.mediaType;
+      // Interfaze wants a full MIME type. A URL keeps the caller's media type
+      // (Interfaze re-sniffs it server-side); a base64 payload needs it
+      // resolved from the bytes.
+      let format = part.mediaType;
+      if (!isFullMediaType(part.mediaType) && part.data.type === 'data') {
+        format = resolveFullMediaType({ part });
+      }
 
       return {
         type: 'text' as const,

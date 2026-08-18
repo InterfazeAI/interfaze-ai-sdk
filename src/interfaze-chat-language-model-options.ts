@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import type { INTERFAZE_MODEL } from './side-channels';
+import type { INTERFAZE_MODEL } from './constants';
 
 export type InterfazeChatModelId = typeof INTERFAZE_MODEL | (string & {});
 

@@ -15,7 +15,7 @@ import { InterfazeChatLanguageModel } from './interfaze-chat-language-model';
 import type { InterfazeChatModelId } from './interfaze-chat-language-model-options';
 import { createInterfazeMetadataExtractor } from './interfaze-metadata-extractor';
 import { resolveInterfazeFileParts } from './interfaze-file-parts';
-import { INTERFAZE_BASE_URL } from './side-channels';
+import { INTERFAZE_BASE_URL } from './constants';
 import { VERSION } from './version';
 
 // Interfaze nests errors under `error` on both paths: the JSON body built by
@@ -48,11 +48,16 @@ function injectGuardTag(
   if (!Array.isArray(guard) || guard.length === 0) return args;
   const tag = `<guard>${guard.join(', ')}</guard>`;
   const messages = Array.isArray(args.messages) ? [...args.messages] : [];
-  const idx = messages.findIndex((m: any) => m?.role === 'system');
-  if (idx !== -1 && typeof messages[idx]?.content === 'string') {
-    const existing = messages[idx].content as string;
-    messages[idx] = {
-      ...messages[idx],
+  const systemIndex = messages.findIndex(
+    (message: any) => message?.role === 'system',
+  );
+  if (
+    systemIndex !== -1 &&
+    typeof messages[systemIndex]?.content === 'string'
+  ) {
+    const existing = messages[systemIndex].content as string;
+    messages[systemIndex] = {
+      ...messages[systemIndex],
       content: existing ? `${tag}\n${existing}` : tag,
     };
   } else {
@@ -66,7 +71,6 @@ function transformInterfazeRequestBody(
 ): Record<string, any> {
   let out = resolveInterfazeFileParts(args);
 
-  // `guard` is serialized into a `<guard>…</guard>` system message.
   if (out.guard !== undefined) {
     const { guard, ...rest } = out;
     out = injectGuardTag(rest, guard);

@@ -1,8 +1,5 @@
 import { secureJsonParse } from '@ai-sdk/provider-utils';
 
-export const INTERFAZE_BASE_URL = 'https://api.interfaze.ai/v1';
-export const INTERFAZE_MODEL = 'interfaze-beta';
-
 const TAG_RE = (tag: string) =>
   new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g');
 
