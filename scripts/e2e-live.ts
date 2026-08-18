@@ -1,7 +1,7 @@
 /**
  * Interfaze provider — full live E2E test for the Vercel AI SDK.
  *
- * Exercises every capability of `@interfaze-ai/ai-sdk-provider` against the
+ * Exercises every capability of `@interfaze-ai/ai-sdk` against the
  * real api.interfaze.ai/v1. Run:
  *   INTERFAZE_API_KEY=sk-... pnpm exec tsx scripts/e2e-live.ts
  * (falls back to reading INTERFAZE_API_KEY from a local .env file)

@@ -118,7 +118,7 @@ export function createInterfaze(
         ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
         ...options.headers,
       },
-      `@interfaze-ai/ai-sdk-provider/${VERSION}`,
+      `@interfaze-ai/ai-sdk/${VERSION}`,
     );
 
   const createLanguageModel = (modelId: InterfazeChatModelId) => {
