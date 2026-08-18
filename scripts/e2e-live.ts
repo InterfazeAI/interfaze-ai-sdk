@@ -376,7 +376,9 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
           precontext: [
             {
               name: 'ocr',
-              result: { extracted_text: 'Coffee $4.50\nTax $0.36\nTotal $4.86' },
+              result: {
+                extracted_text: 'Coffee $4.50\nTax $0.36\nTotal $4.86',
+              },
             },
           ],
         },

@@ -4,6 +4,7 @@
   "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on providerMetadata.",
   "type": "module",
   "license": "MIT",
+  "author": "InterfazeAI",
   "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -25,8 +26,14 @@
     "build": "pnpm clean && tsup",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:pkg": "publint --strict && attw --pack --profile esm-only",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "qa:live": "tsx scripts/e2e-live.ts",
+    "prepare": "tsup",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
@@ -38,8 +45,12 @@
     "zod": "^3.25.76 || ^4.1.8"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "ai": "^7.0.64",
+    "prettier": "^3.9.6",
+    "publint": "^0.3.23",
     "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "^5.8.3",
