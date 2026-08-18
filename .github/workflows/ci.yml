@@ -23,6 +23,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Version agreement (package.json ↔ jsr.json)
+        run: pnpm check:versions
       - name: Format check (prettier)
         run: pnpm format:check
       - name: Type check

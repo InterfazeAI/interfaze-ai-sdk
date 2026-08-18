@@ -33,7 +33,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "qa:live": "tsx scripts/e2e-live.ts",
-    "prepare": "tsup",
+    "check:versions": "node scripts/check-versions.mjs",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
