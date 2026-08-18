@@ -1,4 +1,4 @@
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText } from 'ai';
 
 // A blocked request is NOT an error — it returns a normal completion whose

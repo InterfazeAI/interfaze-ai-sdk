@@ -3,7 +3,7 @@
 Runnable snippets. Install the package and set your key first:
 
 ```bash
-npm install @interfaze-ai/ai-sdk-provider ai zod
+npm install @interfaze-ai/ai-sdk ai zod
 export INTERFAZE_API_KEY="sk_..."
 npx tsx examples/quickstart.ts
 ```

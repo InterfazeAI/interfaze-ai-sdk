@@ -1,4 +1,4 @@
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 

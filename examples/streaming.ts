@@ -1,4 +1,4 @@
-import { createInterfaze } from '@interfaze-ai/ai-sdk-provider';
+import { createInterfaze } from '@interfaze-ai/ai-sdk';
 import { streamText } from 'ai';
 
 // The inline <think>/<precontext> side-channels are stripped from the visible

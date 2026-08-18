@@ -1,6 +1,6 @@
 {
-  "name": "@interfaze-ai/ai-sdk-provider",
-  "version": "0.1.0",
+  "name": "@interfaze-ai/ai-sdk",
+  "version": "1.0.0",
   "exports": "./src/index.ts",
   "publish": {
     "include": ["src", "README.md", "LICENSE", "jsr.json"],
