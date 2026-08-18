@@ -1,0 +1,4 @@
+{"id":"chatcmpl-interfaze-truncated-think","choices":[{"index":0,"delta":{"role":"assistant"}}],"created":1780000030,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-truncated-think","choices":[{"index":0,"delta":{"content":"<thi"}}],"created":1780000030,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-truncated-think","choices":[{"index":0,"delta":{"content":"nk>Partial reasoning that was cut o"}}],"created":1780000030,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-truncated-think","choices":[{"index":0,"delta":{},"finish_reason":"length"}],"created":1780000030,"model":"interfaze-beta","object":"chat.completion.chunk","usage":{"prompt_tokens":9,"completion_tokens":16,"total_tokens":25}}

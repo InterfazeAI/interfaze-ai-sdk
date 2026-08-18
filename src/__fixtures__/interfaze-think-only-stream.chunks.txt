@@ -1,0 +1,4 @@
+{"id":"chatcmpl-interfaze-think-only","choices":[{"index":0,"delta":{"role":"assistant"}}],"created":1780000020,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-think-only","choices":[{"index":0,"delta":{"content":"Wrap your reasoning in <thi"}}],"created":1780000020,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-think-only","choices":[{"index":0,"delta":{"content":"nk> tags so it stays hidden."}}],"created":1780000020,"model":"interfaze-beta","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-think-only","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"created":1780000020,"model":"interfaze-beta","object":"chat.completion.chunk","usage":{"prompt_tokens":9,"completion_tokens":12,"total_tokens":21}}
