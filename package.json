@@ -1,6 +1,6 @@
 {
   "name": "@interfaze-ai/ai-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on providerMetadata.",
   "type": "module",
   "license": "MIT",

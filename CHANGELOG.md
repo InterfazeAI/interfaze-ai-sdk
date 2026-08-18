@@ -4,6 +4,16 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.1]
+
+### Fixed
+
+- `VERSION` reported `0.0.0-test` to JSR consumers. It was injected at build time by tsup, but JSR publishes the raw sources with no build step, so the fallback always won. It's now a plain literal, checked against package.json and jsr.json in CI.
+
+### Added
+
+- `description` and `runtimeCompat` in jsr.json (Node, Deno, Bun, browser, workerd) — both count toward the JSR score, and neither is inferred from package.json.
+
 ## [1.0.0]
 
 Initial release — community [AI SDK](https://ai-sdk.dev) provider for [Interfaze](https://interfaze.ai).

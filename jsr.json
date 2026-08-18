@@ -1,7 +1,15 @@
 {
   "name": "@interfaze-ai/ai-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on providerMetadata.",
   "exports": "./src/index.ts",
+  "runtimeCompat": {
+    "node": true,
+    "deno": true,
+    "bun": true,
+    "browser": true,
+    "workerd": true
+  },
   "publish": {
     "include": ["src", "README.md", "LICENSE", "jsr.json"],
     "exclude": ["src/**/*.test.ts", "src/__fixtures__"]
