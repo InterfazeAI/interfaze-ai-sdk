@@ -67,7 +67,7 @@ describe('InterfazeProvider', () => {
       });
 
       expect(fetchMock.mock.calls[0][1].headers['user-agent']).toContain(
-        '@interfaze-ai/ai-sdk-provider/0.0.0-test',
+        '@interfaze-ai/ai-sdk/0.0.0-test',
       );
     });
 

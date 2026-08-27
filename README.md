@@ -11,8 +11,8 @@ It brings Interfaze to the standard `generateText` / `streamText` / `generateObj
 ## Install
 
 ```bash
-npm install @interfaze-ai/ai-sdk-provider
-# or: yarn add · pnpm add · bun add @interfaze-ai/ai-sdk-provider
+npm install @interfaze-ai/ai-sdk
+# or: yarn add · pnpm add · bun add @interfaze-ai/ai-sdk
 ```
 
 Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaze`). Get a key from the [Interfaze dashboard](https://interfaze.ai).
@@ -22,7 +22,7 @@ Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaz
 Import the default `interfaze` instance, or build one with `createInterfaze`:
 
 ```ts
-import { createInterfaze, interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { createInterfaze, interfaze } from '@interfaze-ai/ai-sdk';
 
 interfaze('interfaze-beta'); // default, reads INTERFAZE_API_KEY
 
@@ -34,7 +34,7 @@ const custom = createInterfaze({ apiKey: 'sk_...' });
 Drop an image into the prompt and get a typed object back — Interfaze runs OCR under the hood and hands you both the structured result and the raw OCR that produced it:
 
 ```ts
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
@@ -86,7 +86,7 @@ Precontext is output-only — it reports what Interfaze did while answering. The
 ## Text
 
 ```ts
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
@@ -119,7 +119,7 @@ const meta = await providerMetadata; // meta?.interfaze?.reasoning; .precontext 
 Interfaze supports structured outputs, so `generateObject` / `streamObject` work with a Zod schema:
 
 ```ts
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
@@ -150,7 +150,7 @@ const { object } = await generateObject({
 Interfaze supports tools — define them and the AI SDK runs the usual tool loop:
 
 ```ts
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText, tool } from 'ai';
 import { z } from 'zod';
 

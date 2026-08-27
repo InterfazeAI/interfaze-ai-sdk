@@ -1,4 +1,4 @@
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText } from 'ai';
 
 // Pass a public URL — Interfaze fetches it server-side — or raw bytes.

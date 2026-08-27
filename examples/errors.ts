@@ -1,4 +1,4 @@
-import { interfaze } from '@interfaze-ai/ai-sdk-provider';
+import { interfaze } from '@interfaze-ai/ai-sdk';
 import { APICallError, generateText } from 'ai';
 
 // Interfaze errors surface as the AI SDK's APICallError, carrying the HTTP
