@@ -1,6 +1,7 @@
 {
   "name": "@interfaze-ai/ai-sdk-provider",
   "version": "0.1.0",
+  "description": "Vercel AI SDK provider for Interfaze",
   "exports": "./src/index.ts",
   "publish": {
     "include": ["src", "README.md", "LICENSE", "jsr.json"],

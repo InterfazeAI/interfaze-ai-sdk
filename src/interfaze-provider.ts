@@ -31,7 +31,25 @@ const interfazeErrorSchema = z.object({
   }),
 });
 
-export type InterfazeErrorData = z.infer<typeof interfazeErrorSchema>;
+/** Shape of an Interfaze API error, parsed from the `error` field of a JSON body or SSE `error` chunk. */
+export interface InterfazeErrorData {
+  /** The error payload returned by the API. */
+  error: {
+    message: string;
+    type?: string | null;
+    param?: any;
+    code?: string | number | null;
+    request_id?: string | null;
+  };
+}
+
+// Compile-time guard: the hand-written interface and the runtime schema must
+// stay structurally identical, or this alias fails to satisfy `Assert<true>`.
+type Assert<T extends true> = T;
+type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type _AssertErrorDataMatchesSchema = Assert<
+  Equal<InterfazeErrorData, z.infer<typeof interfazeErrorSchema>>
+>;
 
 const HTTPS_URL = /^https:\/\/.+$/;
 
@@ -79,10 +97,15 @@ function transformInterfazeRequestBody(
   return out;
 }
 
+/** Configuration for {@link createInterfaze}. */
 export interface InterfazeProviderSettings {
+  /** API key; defaults to the `INTERFAZE_API_KEY` environment variable. */
   apiKey?: string;
+  /** Base URL for the API; defaults to {@link INTERFAZE_BASE_URL}. */
   baseURL?: string;
+  /** Extra headers merged into every request. */
   headers?: Record<string, string>;
+  /** Custom `fetch` implementation, e.g. for testing or proxying. */
   fetch?: FetchFunction;
   /** Stream `<precontext>` deltas as they're produced (`x-show-additional-info`). */
   showAdditionalInfo?: boolean;
@@ -92,13 +115,35 @@ export interface InterfazeProviderSettings {
   bypassCache?: boolean;
 }
 
+/** Interfaze provider: call it directly or via {@link InterfazeProvider.languageModel} / {@link InterfazeProvider.chat} to create a chat model. */
 export interface InterfazeProvider extends ProviderV4 {
   (modelId: InterfazeChatModelId): LanguageModelV4;
+  /** Create a chat language model for the given model id. */
   languageModel(modelId: InterfazeChatModelId): LanguageModelV4;
+  /** Alias for {@link InterfazeProvider.languageModel}. */
   chat(modelId: InterfazeChatModelId): LanguageModelV4;
+  /** Not supported by Interfaze; throws `NoSuchModelError`. */
   textEmbeddingModel(modelId: string): never;
 }
 
+/**
+ * Create an {@link InterfazeProvider} bound to the given settings.
+ *
+ * @param options - Provider settings such as `apiKey`, `baseURL`, and header toggles.
+ * @returns A provider that creates Interfaze chat models.
+ *
+ * @example
+ * ```ts
+ * import { createInterfaze } from '@interfaze-ai/ai-sdk-provider';
+ * import { generateText } from 'ai';
+ *
+ * const interfaze = createInterfaze({ apiKey: process.env.INTERFAZE_API_KEY });
+ * const { text } = await generateText({
+ *   model: interfaze('interfaze-beta'),
+ *   prompt: 'Hello!',
+ * });
+ * ```
+ */
 export function createInterfaze(
   options: InterfazeProviderSettings = {},
 ): InterfazeProvider {
@@ -164,4 +209,5 @@ export function createInterfaze(
   return provider;
 }
 
-export const interfaze = createInterfaze();
+/** Default provider instance, configured from the environment (`INTERFAZE_API_KEY`). */
+export const interfaze: InterfazeProvider = createInterfaze();
