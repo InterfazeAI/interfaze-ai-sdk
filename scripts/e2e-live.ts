@@ -385,11 +385,11 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'What animal is in this image? One word.' },
+            { type: 'text', text: 'What is the name of person in photo?' },
             {
               type: 'file',
               mediaType: 'image/jpeg',
-              data: new URL('https://picsum.photos/id/237/320/320'),
+              data: new URL('https://r2public.jigsawstack.com/interfaze/examples/id.jpg'),
             },
           ],
         },

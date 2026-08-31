@@ -29,10 +29,12 @@ const image = await generateText({
     {
       role: 'user',
       content: [
-        { type: 'text', text: 'What animal is in this image? One word.' },
+        { type: 'text', text: 'What is the name of person in photo?' },
         {
           type: 'image',
-          image: new URL('https://picsum.photos/id/237/320/320'),
+          image: new URL(
+            'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
+          ),
         },
       ],
     },
