@@ -389,7 +389,9 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
             {
               type: 'file',
               mediaType: 'image/jpeg',
-              data: new URL('https://r2public.jigsawstack.com/interfaze/examples/id.jpg'),
+              data: new URL(
+                'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
+              ),
             },
           ],
         },
