@@ -36,10 +36,10 @@ export interface InterfazeErrorData {
   /** The error payload returned by the API. */
   error: {
     message: string;
-    type?: string | null;
+    type?: string | null | undefined;
     param?: any;
-    code?: string | number | null;
-    request_id?: string | null;
+    code?: string | number | null | undefined;
+    request_id?: string | null | undefined;
   };
 }
 
@@ -134,7 +134,7 @@ export interface InterfazeProvider extends ProviderV4 {
  *
  * @example
  * ```ts
- * import { createInterfaze } from '@interfaze-ai/ai-sdk-provider';
+ * import { createInterfaze } from '@interfaze-ai/ai-sdk';
  * import { generateText } from 'ai';
  *
  * const interfaze = createInterfaze({ apiKey: process.env.INTERFAZE_API_KEY });

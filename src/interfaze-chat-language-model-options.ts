@@ -38,29 +38,31 @@ export const interfazeLanguageModelChatOptions = z.object({
 /** Interfaze-specific call options, passed via `providerOptions.interfaze`. */
 export interface InterfazeLanguageModelChatOptions {
   /** Enable guardrail categories; a match returns `unsafe <code>` as the message content. */
-  guard?: (
-    | 'S1'
-    | 'S2'
-    | 'S3'
-    | 'S4'
-    | 'S5'
-    | 'S6'
-    | 'S7'
-    | 'S8'
-    | 'S9'
-    | 'S10'
-    | 'S11'
-    | 'S12'
-    | 'S13'
-    | 'S14'
-    | 'S1_IMAGE'
-    | 'S12_IMAGE'
-    | 'S15_IMAGE'
-    | 'ALL'
-  )[];
+  guard?:
+    | (
+        | 'S1'
+        | 'S2'
+        | 'S3'
+        | 'S4'
+        | 'S5'
+        | 'S6'
+        | 'S7'
+        | 'S8'
+        | 'S9'
+        | 'S10'
+        | 'S11'
+        | 'S12'
+        | 'S13'
+        | 'S14'
+        | 'S1_IMAGE'
+        | 'S12_IMAGE'
+        | 'S15_IMAGE'
+        | 'ALL'
+      )[]
+    | undefined;
   /** Reasoning effort; also accepts Interfaze's `on` / `off` / `auto`. */
   reasoningEffort?:
-    'minimal' | 'low' | 'medium' | 'high' | 'on' | 'off' | 'auto';
+    'minimal' | 'low' | 'medium' | 'high' | 'on' | 'off' | 'auto' | undefined;
 }
 
 // Compile-time guard: the hand-written interface and the runtime schema must
