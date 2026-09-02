@@ -1,3 +1,20 @@
+/**
+ * Community [Vercel AI SDK](https://ai-sdk.dev) provider for
+ * [Interfaze](https://interfaze.ai).
+ *
+ * @example
+ * ```ts
+ * import { interfaze } from '@interfaze-ai/ai-sdk';
+ * import { generateText } from 'ai';
+ *
+ * const { text } = await generateText({
+ *   model: interfaze('interfaze-beta'),
+ *   prompt: 'Write a haiku about TypeScript.',
+ * });
+ * ```
+ *
+ * @module
+ */
 export { createInterfaze, interfaze } from './interfaze-provider';
 export type {
   InterfazeProvider,
