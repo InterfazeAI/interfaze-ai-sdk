@@ -5,4 +5,4 @@
 // missing there and `VERSION` would fall back to a placeholder.
 // `scripts/check-versions.mjs` keeps this in lockstep with package.json and
 // jsr.json, and CI fails the build if they drift.
-export const VERSION = '1.0.1';
+export const VERSION = '1.0.2';
