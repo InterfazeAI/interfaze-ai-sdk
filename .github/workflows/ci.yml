@@ -27,6 +27,8 @@ jobs:
         run: pnpm format:check
       - name: Type check
         run: pnpm type-check
+      - name: Deprecated AI SDK usage
+        run: pnpm check:deprecations
       - name: Build
         run: pnpm build
       - name: Package checks (publint + are-the-types-wrong)

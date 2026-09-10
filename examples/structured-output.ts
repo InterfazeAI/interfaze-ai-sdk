@@ -1,14 +1,16 @@
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-// generateObject with an image — OCR runs under the hood.
-const { object } = await generateObject({
+// Structured output with an image — OCR runs under the hood.
+const { output } = await generateText({
   model: interfaze('interfaze-beta'),
-  schema: z.object({
-    merchant: z.string(),
-    total: z.number(),
-    items: z.array(z.object({ name: z.string(), price: z.number() })),
+  output: Output.object({
+    schema: z.object({
+      merchant: z.string(),
+      total: z.number(),
+      items: z.array(z.object({ name: z.string(), price: z.number() })),
+    }),
   }),
   messages: [
     {
@@ -24,4 +26,4 @@ const { object } = await generateObject({
   ],
 });
 
-console.log(object);
+console.log(output);

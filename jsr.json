@@ -1,7 +1,7 @@
 {
   "name": "@interfaze-ai/ai-sdk",
   "version": "1.0.2",
-  "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on providerMetadata.",
+  "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on finalStep.providerMetadata.",
   "exports": "./src/index.ts",
   "runtimeCompat": {
     "node": true,

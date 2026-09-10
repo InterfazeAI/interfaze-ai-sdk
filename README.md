@@ -4,7 +4,7 @@ The community [AI SDK](https://ai-sdk.dev/docs) provider for [Interfaze](https:/
 
 [Docs](https://interfaze.ai/docs) · [limits](https://interfaze.ai/docs/limits) · [pricing](https://interfaze.ai/pricing) · [dashboard](https://interfaze.ai) · [TypeScript SDK](https://github.com/InterfazeAI/interfaze-js) · [Python SDK](https://github.com/InterfazeAI/interfaze-python)
 
-It brings Interfaze to the standard `generateText` / `streamText` / `generateObject` surface, and surfaces Interfaze's extras — the semantic-cache flag, reasoning, and internal-task `precontext` — on `providerMetadata`.
+It brings Interfaze to the standard `generateText` / `streamText` surface, and surfaces Interfaze's extras — the semantic-cache flag, reasoning, and internal-task `precontext` — on `finalStep.providerMetadata`.
 
 > Community provider, maintained by Interfaze. For the list of first-party providers see the [AI SDK docs](https://ai-sdk.dev/providers/ai-sdk-providers); for community providers, the [community list](https://ai-sdk.dev/providers/community-providers).
 
@@ -35,16 +35,18 @@ Drop an image into the prompt and get a typed object back — Interfaze runs OCR
 
 ```ts
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-const { object, providerMetadata } = await generateObject({
+const { output, finalStep } = await generateText({
   model: interfaze('interfaze-beta'),
-  schema: z.object({
-    first_name: z.string(),
-    last_name: z.string(),
-    dob: z.string().describe('Date of birth on the ID'),
-    licence_number: z.string(),
+  output: Output.object({
+    schema: z.object({
+      first_name: z.string(),
+      last_name: z.string(),
+      dob: z.string().describe('Date of birth on the ID'),
+      licence_number: z.string(),
+    }),
   }),
   messages: [
     {
@@ -62,21 +64,24 @@ const { object, providerMetadata } = await generateObject({
   ],
 });
 
-console.log(object); // { first_name, last_name, dob, licence_number }
-console.log('OCR result:', providerMetadata?.interfaze?.precontext?.[0]); // the raw OCR
+console.log(output); // { first_name, last_name, dob, licence_number }
+console.log(
+  'OCR result:',
+  finalStep.providerMetadata?.interfaze?.precontext?.[0],
+); // the raw OCR
 ```
 
 ## Precontext
 
-Alongside the answer, a response carries `precontext` — the raw output of any internal tool Interfaze ran while answering (OCR, web search, scrape, transcription, …). It lands on `providerMetadata.interfaze.precontext`:
+Alongside the answer, a response carries `precontext` — the raw output of any internal tool Interfaze ran while answering (OCR, web search, scrape, transcription, …). It lands on `finalStep.providerMetadata.interfaze.precontext`:
 
 ```ts
-const { text, providerMetadata } = await generateText({
+const { text, finalStep } = await generateText({
   model: interfaze('interfaze-beta'),
   prompt: 'Which US public companies reported earnings today?',
 });
 
-for (const p of providerMetadata?.interfaze?.precontext ?? []) {
+for (const p of finalStep.providerMetadata?.interfaze?.precontext ?? []) {
   console.log(p); // e.g. { name: "search", result: { … } }
 }
 ```
@@ -95,40 +100,42 @@ const { text } = await generateText({
 });
 ```
 
-A web search backs the answer here — the sources land on `providerMetadata.interfaze.precontext`.
+A web search backs the answer here — the sources land on `finalStep.providerMetadata.interfaze.precontext`.
 
 ### Streaming
 
-`streamText` streams the reply as it's generated; the inline `<think>` / `<precontext>` side-channels are stripped from the visible text, and `reasoning` is attached to `providerMetadata` when the stream finishes. Streamed `precontext` is only emitted when the provider is created with `showAdditionalInfo: true` (see [Client options](#client-options)); otherwise it's `undefined` at finish.
+`streamText` streams the reply as it's generated; the inline `<think>` / `<precontext>` side-channels are stripped from the visible text, and `reasoning` is attached to `finalStep.providerMetadata` when the stream finishes. Streamed `precontext` is only emitted when the provider is created with `showAdditionalInfo: true` (see [Client options](#client-options)); otherwise it's `undefined` at finish.
 
 ```ts
 const interfaze = createInterfaze({ showAdditionalInfo: true }); // for streamed precontext
 
-const { textStream, providerMetadata } = streamText({
+const { textStream, finalStep } = streamText({
   model: interfaze('interfaze-beta'),
   prompt: "Summarize this week's top AI research and cite your sources.",
 });
 
 for await (const delta of textStream) process.stdout.write(delta);
 
-const meta = await providerMetadata; // meta?.interfaze?.reasoning; .precontext when showAdditionalInfo is set
+const meta = (await finalStep).providerMetadata; // meta?.interfaze?.reasoning; .precontext when showAdditionalInfo is set
 ```
 
 ## Structured output
 
-Interfaze supports structured outputs, so `generateObject` / `streamObject` work with a Zod schema:
+Interfaze supports structured outputs, so `generateText` / `streamText` accept an `Output` spec with a Zod schema:
 
 ```ts
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-const { object } = await generateObject({
+const { output } = await generateText({
   model: interfaze('interfaze-beta'),
-  schema: z.object({
-    merchant: z.string(),
-    total: z.number(),
-    items: z.array(z.object({ name: z.string(), price: z.number() })),
+  output: Output.object({
+    schema: z.object({
+      merchant: z.string(),
+      total: z.number(),
+      items: z.array(z.object({ name: z.string(), price: z.number() })),
+    }),
   }),
   messages: [
     {
@@ -171,16 +178,16 @@ const { text, toolResults } = await generateText({
 
 ## Reasoning
 
-Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's `'on' | 'off' | 'auto'`); the reasoning text comes back on `providerMetadata.interfaze.reasoning`:
+Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's `'on' | 'off' | 'auto'`); the reasoning text comes back on `finalStep.providerMetadata.interfaze.reasoning`:
 
 ```ts
-const { text, providerMetadata } = await generateText({
+const { text, finalStep } = await generateText({
   model: interfaze('interfaze-beta'),
   prompt: 'Which region should we launch in first, and why?',
   providerOptions: { interfaze: { reasoningEffort: 'high' } },
 });
 
-providerMetadata?.interfaze?.reasoning; // string | undefined
+finalStep.providerMetadata?.interfaze?.reasoning; // string | undefined
 ```
 
 A semantic-cache hit replays a stored answer without reasoning — set `bypassCache: true` on the provider (see [Client options](#client-options)) when you need fresh reasoning every call.
@@ -246,7 +253,7 @@ Codes are `S1`–`S14`, the image-only `S1_IMAGE` / `S12_IMAGE` / `S15_IMAGE`, a
 
 ## Interfaze metadata
 
-Interfaze returns fields a plain chat provider drops. They land on `providerMetadata.interfaze` for both `generateText` and `streamText`:
+Interfaze returns fields a plain chat provider drops. They land on `finalStep.providerMetadata.interfaze` for both `generateText` and `streamText`:
 
 ```ts
 const result = await generateText({
@@ -254,9 +261,9 @@ const result = await generateText({
   prompt: 'What is the weather in San Francisco?',
 });
 
-result.providerMetadata?.interfaze?.vcache; // boolean — semantic-cache hit
-result.providerMetadata?.interfaze?.reasoning; // string | undefined
-result.providerMetadata?.interfaze?.precontext; // unknown[] | undefined — OCR / web / scrape / … output
+result.finalStep.providerMetadata?.interfaze?.vcache; // boolean — semantic-cache hit
+result.finalStep.providerMetadata?.interfaze?.reasoning; // string | undefined
+result.finalStep.providerMetadata?.interfaze?.precontext; // unknown[] | undefined — OCR / web / scrape / … output
 ```
 
 ## Client options
@@ -292,17 +299,17 @@ try {
 
 ## Capabilities
 
-| Use case                                | Entry point                                 |
-| --------------------------------------- | ------------------------------------------- |
-| [Text](#text)                           | `generateText`                              |
-| [Streaming](#streaming)                 | `streamText`                                |
-| [Structured output](#structured-output) | `generateObject` / `streamObject`           |
-| [Tools](#tools)                         | `tools`                                     |
-| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort` |
-| [Multimodal](#multimodal)               | `image` / `file` content parts              |
-| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`           |
-| [Precontext](#precontext)               | `providerMetadata.interfaze.precontext`     |
-| [Semantic cache](#interfaze-metadata)   | `providerMetadata.interfaze.vcache`         |
+| Use case                                | Entry point                                       |
+| --------------------------------------- | ------------------------------------------------- |
+| [Text](#text)                           | `generateText`                                    |
+| [Streaming](#streaming)                 | `streamText`                                      |
+| [Structured output](#structured-output) | `Output.object` / `Output.array`                  |
+| [Tools](#tools)                         | `tools`                                           |
+| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort`       |
+| [Multimodal](#multimodal)               | `image` / `file` content parts                    |
+| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`                 |
+| [Precontext](#precontext)               | `finalStep.providerMetadata.interfaze.precontext` |
+| [Semantic cache](#interfaze-metadata)   | `finalStep.providerMetadata.interfaze.vcache`     |
 
 ## Examples
 

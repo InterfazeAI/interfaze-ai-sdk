@@ -11,7 +11,6 @@ import path from 'node:path';
 import {
   generateText,
   streamText,
-  generateObject,
   tool,
   Output,
   NoSuchModelError,
@@ -103,7 +102,7 @@ async function test(n: string, fn: () => Promise<string>) {
 function assert(cond: any, msg: string) {
   if (!cond) throw new Error(`assertion failed: ${msg}`);
 }
-const meta = (r: any) => r?.providerMetadata?.interfaze;
+const meta = (r: any) => r?.finalStep?.providerMetadata?.interfaze;
 
 const weather = tool({
   description: 'Get the weather for a location',
@@ -235,17 +234,19 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
   });
 
   // ---- Structured output (live) ----
-  await test('08 generateObject (structured)', async () => {
-    const r = await generateObject({
+  await test('08 generateText + Output.object (structured)', async () => {
+    const r = await generateText({
       model: interfaze(MODEL),
-      schema: z.object({ city: z.string(), country: z.string() }),
+      output: Output.object({
+        schema: z.object({ city: z.string(), country: z.string() }),
+      }),
       prompt: 'Capital of France as {city, country}.',
     });
     assert(
-      typeof r.object.city === 'string' && typeof r.object.country === 'string',
+      typeof r.output.city === 'string' && typeof r.output.country === 'string',
       'typed object',
     );
-    return `object=${JSON.stringify(r.object)}`;
+    return `object=${JSON.stringify(r.output)}`;
   });
   await test('09 streamText + Output.object (partialOutputStream)', async () => {
     const r = streamText({
@@ -307,8 +308,7 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
       prompt: 'Weather in Paris? Use the weather tool.',
     });
     const types: Record<string, number> = {};
-    for await (const p of r.fullStream)
-      types[p.type] = (types[p.type] ?? 0) + 1;
+    for await (const p of r.stream) types[p.type] = (types[p.type] ?? 0) + 1;
     assert((types['tool-call'] ?? 0) > 0, 'tool-call emitted');
     return `parts=${JSON.stringify(types)}`;
   });
@@ -373,7 +373,9 @@ const cityAttractions = tool({ inputSchema: z.object({ city: z.string() }) });
       `tag leaked: ${JSON.stringify(t).slice(0, 80)}`,
     );
     return `leaked=false reasoning=${
-      (await r.providerMetadata)?.interfaze?.reasoning ? 'present' : 'absent'
+      (await r.finalStep).providerMetadata?.interfaze?.reasoning
+        ? 'present'
+        : 'absent'
     }`;
   });
 
