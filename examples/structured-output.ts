@@ -18,8 +18,9 @@ const { output } = await generateText({
       content: [
         { type: 'text', text: 'Extract this receipt.' },
         {
-          type: 'image',
-          image: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
         },
       ],
     },

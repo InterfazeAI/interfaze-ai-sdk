@@ -27,6 +27,8 @@ jobs:
         run: pnpm format:check
       - name: Type check
         run: pnpm type-check
+      - name: Type check (examples · scripts)
+        run: pnpm type-check:examples
       - name: Deprecated AI SDK usage
         run: pnpm check:deprecations
       - name: Build

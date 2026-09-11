@@ -1,45 +1,22 @@
-import type { FetchFunction } from '@ai-sdk/provider-utils';
 import { generateText, Output, streamText } from 'ai';
-import fs from 'node:fs';
-import { describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
-import { createInterfaze } from './interfaze-provider';
+import { describe, expect, it } from 'vitest';
+import { z as zod3 } from 'zod';
+import { z } from 'zod/v4';
+import {
+  createCapturingFetchMock,
+  createJsonFixtureFetchMock,
+  createStreamFixtureFetchMock,
+  modelWith,
+} from './__fixtures__/fetch-mocks';
 
 /**
  * The other suites assert against the `LanguageModelV4` boundary. These drive
  * the model through the `ai` package instead, so the surface the README tells
- * users to read — `finalStep.providerMetadata` — stays wired to the metadata
- * `doGenerate` / `doStream` attach.
+ * users to read — `finalStep.providerMetadata`, `Output.object`, `stream` —
+ * stays wired to what `doGenerate` / `doStream` produce.
  */
 
-function createJsonFixtureFetchMock(filename: string) {
-  return vi.fn().mockResolvedValue(
-    new Response(fs.readFileSync(`src/__fixtures__/${filename}.json`, 'utf8'), {
-      headers: { 'content-type': 'application/json' },
-    }),
-  );
-}
-
-function createStreamFixtureFetchMock(filename: string) {
-  const chunks = fs
-    .readFileSync(`src/__fixtures__/${filename}.chunks.txt`, 'utf8')
-    .split('\n')
-    .filter(line => line.trim().length > 0);
-
-  return vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        [...chunks.map(chunk => `data: ${chunk}\n\n`), 'data: [DONE]\n\n'].join(
-          '',
-        ),
-        { headers: { 'content-type': 'text/event-stream' } },
-      ),
-    );
-}
-
-const modelWith = (fetch: FetchFunction) =>
-  createInterfaze({ apiKey: 'test-api-key', fetch })('interfaze-beta');
+const cityAndCountry = z.object({ city: z.string(), country: z.string() });
 
 describe('generateText', () => {
   it('exposes interfaze metadata on finalStep.providerMetadata', async () => {
@@ -81,15 +58,49 @@ describe('streamText', () => {
       reasoning: 'Thinking about the weather.',
     });
   });
+
+  it('emits side-channel-free text on the `stream` part stream', async () => {
+    const { stream } = streamText({
+      model: modelWith(createStreamFixtureFetchMock('interfaze-think-stream')),
+      prompt: 'What is the weather?',
+    });
+
+    const partTypes: string[] = [];
+    let text = '';
+    for await (const part of stream) {
+      partTypes.push(part.type);
+      if (part.type === 'text-delta') {
+        text += part.text;
+      }
+    }
+
+    expect(text).toBe('It is sunny.');
+    expect(partTypes).toContain('finish');
+    expect(text).not.toContain('<think>');
+  });
+
+  it('resolves a typed output from a stream via Output.object', async () => {
+    const { partialOutputStream, output } = streamText({
+      model: modelWith(createStreamFixtureFetchMock('interfaze-structured')),
+      output: Output.object({ schema: cityAndCountry }),
+      prompt: 'Capital of France as {city, country}.',
+    });
+
+    let partials = 0;
+    for await (const _partial of partialOutputStream) {
+      partials++;
+    }
+
+    expect(partials).toBeGreaterThan(0);
+    expect(await output).toEqual({ city: 'Paris', country: 'France' });
+  });
 });
 
 describe('generateText + Output.object', () => {
   it('returns the typed output alongside interfaze metadata', async () => {
     const { output, finalStep } = await generateText({
       model: modelWith(createJsonFixtureFetchMock('interfaze-structured')),
-      output: Output.object({
-        schema: z.object({ city: z.string(), country: z.string() }),
-      }),
+      output: Output.object({ schema: cityAndCountry }),
       prompt: 'Capital of France as {city, country}.',
     });
 
@@ -98,5 +109,58 @@ describe('generateText + Output.object', () => {
       vcache: false,
       precontext: [{ name: 'ocr', result: { text: 'Paris, France' } }],
     });
+  });
+
+  it('sends the schema as a json_schema response_format', async () => {
+    const { fetch, requests } = createCapturingFetchMock(
+      'interfaze-structured',
+    );
+
+    await generateText({
+      model: modelWith(fetch),
+      output: Output.object({ schema: cityAndCountry }),
+      prompt: 'Capital of France as {city, country}.',
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].response_format).toEqual({
+      type: 'json_schema',
+      json_schema: {
+        name: 'response',
+        strict: true,
+        schema: {
+          $schema: 'http://json-schema.org/draft-07/schema#',
+          type: 'object',
+          properties: { city: { type: 'string' }, country: { type: 'string' } },
+          required: ['city', 'country'],
+          additionalProperties: false,
+        },
+      },
+    });
+  });
+
+  // `src` builds its own option schemas with `zod/v4`, but the package accepts
+  // either flavour (`zod: ^3.25.76 || ^4.1.8`), so both must reach the wire as
+  // the same JSON Schema.
+  it('produces an equivalent schema from zod 3 and zod 4', async () => {
+    const zod4 = createCapturingFetchMock('interfaze-structured');
+    await generateText({
+      model: modelWith(zod4.fetch),
+      output: Output.object({ schema: cityAndCountry }),
+      prompt: 'p',
+    });
+
+    const legacy = createCapturingFetchMock('interfaze-structured');
+    await generateText({
+      model: modelWith(legacy.fetch),
+      output: Output.object({
+        schema: zod3.object({ city: zod3.string(), country: zod3.string() }),
+      }),
+      prompt: 'p',
+    });
+
+    expect(legacy.requests[0].response_format).toEqual(
+      zod4.requests[0].response_format,
+    );
   });
 });

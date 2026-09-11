@@ -27,6 +27,7 @@
     "build": "pnpm clean && tsup",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
+    "type-check:examples": "tsc -p tsconfig.examples.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:pkg": "publint --strict && attw --pack --profile esm-only",

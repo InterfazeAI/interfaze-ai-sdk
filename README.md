@@ -54,8 +54,9 @@ const { output, finalStep } = await generateText({
       content: [
         { type: 'text', text: 'Extract the details from this ID.' },
         {
-          type: 'image',
-          image: new URL(
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL(
             'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
           ),
         },
@@ -65,10 +66,11 @@ const { output, finalStep } = await generateText({
 });
 
 console.log(output); // { first_name, last_name, dob, licence_number }
-console.log(
-  'OCR result:',
-  finalStep.providerMetadata?.interfaze?.precontext?.[0],
-); // the raw OCR
+
+// `providerMetadata` is typed as JSON, so narrow `precontext` to read it.
+const precontext = finalStep.providerMetadata?.interfaze?.precontext as
+  unknown[] | undefined;
+console.log('OCR result:', precontext?.[0]); // the raw OCR
 ```
 
 ## Precontext
@@ -81,7 +83,10 @@ const { text, finalStep } = await generateText({
   prompt: 'Which US public companies reported earnings today?',
 });
 
-for (const p of finalStep.providerMetadata?.interfaze?.precontext ?? []) {
+const precontext = finalStep.providerMetadata?.interfaze?.precontext as
+  unknown[] | undefined;
+
+for (const p of precontext ?? []) {
   console.log(p); // e.g. { name: "search", result: { … } }
 }
 ```
@@ -143,8 +148,9 @@ const { output } = await generateText({
       content: [
         { type: 'text', text: 'Extract this receipt.' },
         {
-          type: 'image',
-          image: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
         },
       ],
     },
@@ -306,7 +312,7 @@ try {
 | [Structured output](#structured-output) | `Output.object` / `Output.array`                  |
 | [Tools](#tools)                         | `tools`                                           |
 | [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort`       |
-| [Multimodal](#multimodal)               | `image` / `file` content parts                    |
+| [Multimodal](#multimodal)               | `file` content parts                              |
 | [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`                 |
 | [Precontext](#precontext)               | `finalStep.providerMetadata.interfaze.precontext` |
 | [Semantic cache](#interfaze-metadata)   | `finalStep.providerMetadata.interfaze.vcache`     |

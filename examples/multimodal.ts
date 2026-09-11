@@ -31,8 +31,9 @@ const image = await generateText({
       content: [
         { type: 'text', text: 'What is the name of person in photo?' },
         {
-          type: 'image',
-          image: new URL(
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL(
             'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
           ),
         },

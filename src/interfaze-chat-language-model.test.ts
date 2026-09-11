@@ -3,16 +3,16 @@ import type {
   LanguageModelV4StreamPart,
 } from '@ai-sdk/provider';
 import type { FetchFunction } from '@ai-sdk/provider-utils';
-import fs from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { createInterfaze } from './interfaze-provider';
+import {
+  createJsonFixtureFetchMock,
+  createStreamFixtureFetchMock,
+  modelWith,
+} from './__fixtures__/fetch-mocks';
 
 const TEST_PROMPT: LanguageModelV4Prompt = [
   { role: 'user', content: [{ type: 'text', text: 'Hello' }] },
 ];
-
-const modelWith = (fetch: FetchFunction) =>
-  createInterfaze({ apiKey: 'test-api-key', fetch })('interfaze-beta');
 
 function visibleText(chunks: LanguageModelV4StreamPart[]): string {
   return chunks
@@ -34,32 +34,6 @@ async function convertStreamToArray(
     chunks.push(value);
   }
   return chunks;
-}
-
-function createJsonFixtureFetchMock(filename: string) {
-  return vi.fn().mockResolvedValue(
-    new Response(fs.readFileSync(`src/__fixtures__/${filename}.json`, 'utf8'), {
-      headers: { 'content-type': 'application/json' },
-    }),
-  );
-}
-
-function createStreamFixtureFetchMock(filename: string) {
-  const chunks = fs
-    .readFileSync(`src/__fixtures__/${filename}.chunks.txt`, 'utf8')
-    .split('\n')
-    .filter(line => line.trim().length > 0);
-
-  return vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        [...chunks.map(chunk => `data: ${chunk}\n\n`), 'data: [DONE]\n\n'].join(
-          '',
-        ),
-        { headers: { 'content-type': 'text/event-stream' } },
-      ),
-    );
 }
 
 describe('doGenerate', () => {
@@ -138,13 +112,14 @@ describe('doGenerate', () => {
   });
 
   it('sends a video file part in the shape Interfaze expects', async () => {
-    const fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ choices: [{ message: {} }] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
+    const fetch = vi.fn(
+      async (_input: unknown, _init: { body: string }) =>
+        new Response(JSON.stringify({ choices: [{ message: {} }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
     );
-    const model = modelWith(fetch);
+    const model = modelWith(fetch as unknown as FetchFunction);
 
     await model.doGenerate({
       prompt: [
@@ -178,13 +153,14 @@ describe('doGenerate', () => {
   });
 
   it('serializes providerOptions.interfaze.guard into a <guard> system message and maps reasoningEffort', async () => {
-    const fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ choices: [{ message: {} }] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
+    const fetch = vi.fn(
+      async (_input: unknown, _init: { body: string }) =>
+        new Response(JSON.stringify({ choices: [{ message: {} }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
     );
-    const model = modelWith(fetch);
+    const model = modelWith(fetch as unknown as FetchFunction);
 
     await model.doGenerate({
       prompt: TEST_PROMPT,
