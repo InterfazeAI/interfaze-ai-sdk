@@ -53,7 +53,7 @@ function loadKey(): string {
   );
 }
 const apiKey = loadKey();
-const MODEL = 'interfaze-beta';
+const MODEL = 'interfaze';
 const interfaze = createInterfaze({ apiKey });
 const noCache = createInterfaze({ apiKey, bypassCache: true });
 

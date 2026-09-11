@@ -2,7 +2,7 @@
   "id": "chatcmpl-interfaze-precontext",
   "object": "chat.completion",
   "created": 1780000001,
-  "model": "interfaze-beta",
+  "model": "interfaze",
   "choices": [
     {
       "index": 0,

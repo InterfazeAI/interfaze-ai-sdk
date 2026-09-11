@@ -32,7 +32,7 @@ describe('interfaze error handling', () => {
           statusText: 'Bad Request',
           headers: { 'content-type': 'application/json' },
         }),
-    )('interfaze-beta');
+    )('interfaze');
 
     let error: unknown;
     try {
@@ -56,7 +56,7 @@ describe('interfaze error handling', () => {
         id: 'c',
         object: 'chat.completion.chunk',
         created: 0,
-        model: 'interfaze-beta',
+        model: 'interfaze',
         choices: [
           {
             index: 0,
@@ -74,7 +74,7 @@ describe('interfaze error handling', () => {
           status: 200,
           headers: { 'content-type': 'text/event-stream' },
         }),
-    )('interfaze-beta');
+    )('interfaze');
 
     const { stream } = await model.doStream({
       prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],

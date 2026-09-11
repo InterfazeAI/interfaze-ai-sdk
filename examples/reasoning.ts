@@ -5,7 +5,7 @@ import { generateText } from 'ai';
 // Interfaze's 'on' | 'off' | 'auto'. The reasoning text comes back on
 // finalStep.providerMetadata.interfaze.reasoning.
 const { text, finalStep } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which region should we launch in first, and why?',
   providerOptions: { interfaze: { reasoningEffort: 'high' } },
 });

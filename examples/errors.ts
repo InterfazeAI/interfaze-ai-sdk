@@ -5,7 +5,7 @@ import { APICallError, generateText } from 'ai';
 // status and the raw response body.
 try {
   await generateText({
-    model: interfaze('interfaze-beta'),
+    model: interfaze('interfaze'),
     prompt: 'hi',
     temperature: 2, // out of range → API 400
   });

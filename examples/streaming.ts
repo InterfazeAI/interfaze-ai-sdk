@@ -8,7 +8,7 @@ import { streamText } from 'ai';
 const interfaze = createInterfaze({ showAdditionalInfo: true });
 
 const { textStream, finalStep } = streamText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: "Summarize this week's top AI research and cite your sources.",
 });
 

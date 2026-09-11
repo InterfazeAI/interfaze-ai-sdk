@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // Structured output with an image — OCR runs under the hood.
 const { output } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   output: Output.object({
     schema: z.object({
       merchant: z.string(),

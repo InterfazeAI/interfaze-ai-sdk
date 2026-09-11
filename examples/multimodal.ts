@@ -5,7 +5,7 @@ import { generateText } from 'ai';
 
 // PDF
 const pdf = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -24,7 +24,7 @@ console.log('PDF:', pdf.text);
 
 // Image
 const image = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -45,7 +45,7 @@ console.log('Image:', image.text);
 
 // Video — a file part with a video/* media type; read server-side.
 const video = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -66,7 +66,7 @@ console.log('Video:', video.text);
 
 // Audio — any of wav / mp3 / m4a / ogg / flac.
 const audio = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',

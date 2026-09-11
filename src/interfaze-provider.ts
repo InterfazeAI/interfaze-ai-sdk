@@ -139,7 +139,7 @@ export interface InterfazeProvider extends ProviderV4 {
  *
  * const interfaze = createInterfaze({ apiKey: process.env.INTERFAZE_API_KEY });
  * const { text } = await generateText({
- *   model: interfaze('interfaze-beta'),
+ *   model: interfaze('interfaze'),
  *   prompt: 'Hello!',
  * });
  * ```

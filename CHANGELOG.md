@@ -20,8 +20,12 @@ sentinel, and adds CI guards so neither can drift again.
 
 ### Changed
 
-- Documentation and examples now read provider metadata from `finalStep.providerMetadata` rather than the result's top-level `providerMetadata`, which AI SDK v7 deprecates on `generateText` / `streamText`. `generateObject` / `streamObject` are likewise replaced with `generateText` / `streamText` plus an `Output` spec, and image inputs use a `file` content part with `mediaType: 'image/*'` instead of the deprecated `image` part (v7 logs a deprecation warning for it). The request Interfaze receives is unchanged in every case.
+- The canonical model id is now `interfaze` (matching the current Interfaze docs), replacing `interfaze-beta` in `INTERFAZE_MODEL`, the examples, and the docs. `InterfazeChatModelId` still accepts any string the API takes, so existing `interfaze('interfaze-beta')` calls keep compiling.
 - `engines.node` is now `>=22`, matching every `@ai-sdk/*` runtime dependency — the previous `>=18` was a compatibility claim the dependencies didn't honor.
+
+### Changed
+
+- Documentation and examples now read provider metadata from `finalStep.providerMetadata` rather than the result's top-level `providerMetadata`, which AI SDK v7 deprecates on `generateText` / `streamText`. `generateObject` / `streamObject` are likewise replaced with `generateText` / `streamText` plus an `Output` spec, and image inputs use a `file` content part with `mediaType: 'image/*'` instead of the deprecated `image` part (v7 logs a deprecation warning for it). The request Interfaze receives is unchanged in every case.
 
 ### Added
 

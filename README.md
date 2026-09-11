@@ -24,7 +24,7 @@ Import the default `interfaze` instance, or build one with `createInterfaze`:
 ```ts
 import { createInterfaze, interfaze } from '@interfaze-ai/ai-sdk';
 
-interfaze('interfaze-beta'); // default, reads INTERFAZE_API_KEY
+interfaze('interfaze'); // default, reads INTERFAZE_API_KEY
 
 const custom = createInterfaze({ apiKey: 'sk_...' });
 ```
@@ -39,7 +39,7 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
 const { output, finalStep } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   output: Output.object({
     schema: z.object({
       first_name: z.string(),
@@ -79,7 +79,7 @@ Alongside the answer, a response carries `precontext` — the raw output of any 
 
 ```ts
 const { text, finalStep } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which US public companies reported earnings today?',
 });
 
@@ -100,7 +100,7 @@ import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which US public companies reported earnings today?',
 });
 ```
@@ -115,7 +115,7 @@ A web search backs the answer here — the sources land on `finalStep.providerMe
 const interfaze = createInterfaze({ showAdditionalInfo: true }); // for streamed precontext
 
 const { textStream, finalStep } = streamText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: "Summarize this week's top AI research and cite your sources.",
 });
 
@@ -134,7 +134,7 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
 const { output } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   output: Output.object({
     schema: z.object({
       merchant: z.string(),
@@ -168,7 +168,7 @@ import { generateText, tool } from 'ai';
 import { z } from 'zod';
 
 const { text, toolResults } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   tools: {
     weather: tool({
       description: 'Get the current weather for a location',
@@ -188,7 +188,7 @@ Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's
 
 ```ts
 const { text, finalStep } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which region should we launch in first, and why?',
   providerOptions: { interfaze: { reasoningEffort: 'high' } },
 });
@@ -216,7 +216,7 @@ Supported media types:
 
 ```ts
 await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -245,7 +245,7 @@ Enable safety categories with `guard`; a blocked request comes back as a normal 
 
 ```ts
 const { text } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: '...',
   providerOptions: { interfaze: { guard: ['S1', 'S10', 'S12_IMAGE'] } },
 });
@@ -263,7 +263,7 @@ Interfaze returns fields a plain chat provider drops. They land on `finalStep.pr
 
 ```ts
 const result = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'What is the weather in San Francisco?',
 });
 
@@ -294,7 +294,7 @@ Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP statu
 import { APICallError } from 'ai';
 
 try {
-  await generateText({ model: interfaze('interfaze-beta'), prompt: '...' });
+  await generateText({ model: interfaze('interfaze'), prompt: '...' });
 } catch (error) {
   if (APICallError.isInstance(error)) {
     error.statusCode; // e.g. 400, 401, 429

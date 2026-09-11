@@ -5,7 +5,7 @@ import { generateText } from 'ai';
 // while answering (here a web search) lands on
 // finalStep.providerMetadata.interfaze.precontext.
 const out = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which US public companies reported earnings today?',
 });
 console.log(

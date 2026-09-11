@@ -3,7 +3,7 @@ import { generateText } from 'ai';
 
 // reads INTERFAZE_API_KEY from the environment
 const { text, finalStep } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'In one sentence, what is Interfaze?',
 });
 

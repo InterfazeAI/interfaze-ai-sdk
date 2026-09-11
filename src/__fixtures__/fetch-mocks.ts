@@ -59,4 +59,4 @@ export function createCapturingFetchMock(filename: string) {
 }
 
 export const modelWith = (fetch: FetchFunction) =>
-  createInterfaze({ apiKey: 'test-api-key', fetch })('interfaze-beta');
+  createInterfaze({ apiKey: 'test-api-key', fetch })('interfaze');
