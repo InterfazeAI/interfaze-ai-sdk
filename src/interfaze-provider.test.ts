@@ -50,25 +50,44 @@ describe('InterfazeProvider', () => {
       });
     });
 
-    it('should pass a versioned user-agent header', async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue(new Response('{}', { status: 200 }));
+    it('appends a versioned user-agent token on the real request path', async () => {
+      const fetchMock = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: 'x',
+              choices: [
+                {
+                  index: 0,
+                  finish_reason: 'stop',
+                  message: { role: 'assistant', content: 'ok' },
+                },
+              ],
+              usage: {
+                prompt_tokens: 1,
+                completion_tokens: 1,
+                total_tokens: 2,
+              },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      );
 
-      const provider = createInterfaze({ fetch: fetchMock });
-      const model = provider('interfaze-beta') as InstanceType<
-        typeof InterfazeChatLanguageModel
-      >;
-      const headers = (model as any).config.headers();
-
-      await fetchMock('https://api.interfaze.ai/v1/test', {
-        method: 'POST',
-        headers,
+      const provider = createInterfaze({ apiKey: 'k', fetch: fetchMock });
+      await provider('interfaze-beta').doGenerate({
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
       });
 
-      expect(fetchMock.mock.calls[0][1].headers['user-agent']).toContain(
+      const [, init] = fetchMock.mock.calls[0] as unknown as [
+        unknown,
+        { headers: Record<string, string> },
+      ];
+      const headers = init.headers;
+      expect(headers['user-agent']).toContain(
         '@interfaze-ai/ai-sdk/0.0.0-test',
       );
+      // The core SDK's own token must survive the append, not be replaced.
+      expect(headers['user-agent']).toContain('ai-sdk/provider-utils/');
     });
 
     it('maps client options to Interfaze headers', () => {

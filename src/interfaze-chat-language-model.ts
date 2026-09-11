@@ -9,11 +9,15 @@ import type {
   SharedV4ProviderMetadata,
 } from '@ai-sdk/provider';
 import {
+  parseProviderOptions,
   serializeModelOptions,
   WORKFLOW_DESERIALIZE,
   WORKFLOW_SERIALIZE,
 } from '@ai-sdk/provider-utils';
-import type { InterfazeChatModelId } from './interfaze-chat-language-model-options';
+import {
+  interfazeLanguageModelChatOptions,
+  type InterfazeChatModelId,
+} from './interfaze-chat-language-model-options';
 import { injectInterfazeFileSentinels } from './interfaze-file-parts';
 import {
   SideChannelFilter,
@@ -64,6 +68,19 @@ function mergeInterfazeMetadata(
   };
 }
 
+/**
+ * Fail fast on malformed `providerOptions.interfaze`.
+ */
+async function validateInterfazeOptions(
+  options: LanguageModelV4CallOptions,
+): Promise<void> {
+  await parseProviderOptions({
+    provider: 'interfaze',
+    providerOptions: options.providerOptions,
+    schema: interfazeLanguageModelChatOptions,
+  });
+}
+
 export class InterfazeChatLanguageModel
   extends OpenAICompatibleChatLanguageModel
   implements LanguageModelV4
@@ -85,6 +102,7 @@ export class InterfazeChatLanguageModel
   async doGenerate(
     options: LanguageModelV4CallOptions,
   ): Promise<LanguageModelV4GenerateResult> {
+    await validateInterfazeOptions(options);
     const result = await super.doGenerate({
       ...options,
       prompt: injectInterfazeFileSentinels(options.prompt),
@@ -129,6 +147,7 @@ export class InterfazeChatLanguageModel
   async doStream(
     options: LanguageModelV4CallOptions,
   ): Promise<LanguageModelV4StreamResult> {
+    await validateInterfazeOptions(options);
     const result = await super.doStream({
       ...options,
       prompt: injectInterfazeFileSentinels(options.prompt),

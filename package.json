@@ -50,18 +50,18 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "ai": "^7.0.64",
     "prettier": "^3.9.6",
     "publint": "^0.3.23",
     "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "^5.8.3",
-    "vitest": "^4.1.6",
+    "vitest": "^4.1.11",
     "zod": "3.25.76"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"

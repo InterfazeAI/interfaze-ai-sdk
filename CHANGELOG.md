@@ -6,13 +6,22 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 
 ## [1.0.2]
 
-No runtime changes — `src/` behaviour is identical to 1.0.1. This release moves the
-documented call surface onto the AI SDK v7 APIs and adds CI guards so it cannot
-drift again.
+Moves the documented call surface onto the AI SDK v7 APIs, hardens the file-part
+sentinel, and adds CI guards so neither can drift again.
+
+### Security
+
+- The internal file-part sentinel was a fixed, published constant, so any text that ended up in a prompt (a scraped page, a pasted document) could impersonate it and smuggle an attacker-chosen file part — including a URL Interfaze fetches server-side — into the request. The sentinel now carries a nonce that is random per process and never observable outside it, which makes it unforgeable.
+
+### Fixed
+
+- Malformed `providerOptions.interfaze` values now fail fast with `InvalidArgumentError` instead of being dropped silently. Previously `guard: 'ALL'` (string instead of array) meant the guardrail the caller believed was on never reached the API. Unknown keys still pass through untouched.
+- The `@interfaze-ai/ai-sdk/<version>` user-agent token never reached the wire: the AI SDK core sets its own `user-agent` on per-call headers, which win the header merge. The token is now appended at send time in a fetch wrapper, preserving the core SDK's tokens.
 
 ### Changed
 
 - Documentation and examples now read provider metadata from `finalStep.providerMetadata` rather than the result's top-level `providerMetadata`, which AI SDK v7 deprecates on `generateText` / `streamText`. `generateObject` / `streamObject` are likewise replaced with `generateText` / `streamText` plus an `Output` spec, and image inputs use a `file` content part with `mediaType: 'image/*'` instead of the deprecated `image` part (v7 logs a deprecation warning for it). The request Interfaze receives is unchanged in every case.
+- `engines.node` is now `>=22`, matching every `@ai-sdk/*` runtime dependency — the previous `>=18` was a compatibility claim the dependencies didn't honor.
 
 ### Added
 

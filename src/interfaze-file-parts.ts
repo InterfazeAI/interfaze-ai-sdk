@@ -10,10 +10,8 @@ import {
   secureJsonParse,
 } from '@ai-sdk/provider-utils';
 
-// Plain-ASCII marker with a UUID — never NUL bytes, which make git treat the
-// file as binary.
-const FILE_SENTINEL_PREFIX =
-  'ai-sdk/interfaze:file-part:5f9c1e3a-2b47-4d6c-8a01-7e3f9d2c4b60:';
+// Plain-ASCII marker with a nonce that is random per process.
+const FILE_SENTINEL_PREFIX = `ai-sdk/interfaze:file-part:${globalThis.crypto.randomUUID()}:`;
 
 /**
  * Media types `convertToOpenAICompatibleChatMessages` already expresses in a
