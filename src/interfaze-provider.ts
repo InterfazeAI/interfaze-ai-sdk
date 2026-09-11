@@ -127,6 +127,22 @@ export interface InterfazeProvider extends ProviderV4 {
 }
 
 /**
+ * Appends this package's user-agent token at send time. Putting it in the
+ * provider's static headers does not work: the AI SDK core sets its own
+ * `user-agent` on the per-call headers, which win the header merge and
+ * silently replace anything the provider configured.
+ */
+function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
+  return (input, init) => {
+    const headers = withUserAgentSuffix(
+      init?.headers ?? {},
+      `@interfaze-ai/ai-sdk/${VERSION}`,
+    );
+    return (base ?? globalThis.fetch)(input, { ...init, headers });
+  };
+}
+
+/**
  * Create an {@link InterfazeProvider} bound to the given settings.
  *
  * @param options - Provider settings such as `apiKey`, `baseURL`, and header toggles.
@@ -144,22 +160,6 @@ export interface InterfazeProvider extends ProviderV4 {
  * });
  * ```
  */
-/**
- * Appends this package's user-agent token at send time. Putting it in the
- * provider's static headers does not work: the AI SDK core sets its own
- * `user-agent` on the per-call headers, which win the header merge and
- * silently replace anything the provider configured.
- */
-function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
-  return (input, init) => {
-    const headers = withUserAgentSuffix(
-      init?.headers ?? {},
-      `@interfaze-ai/ai-sdk/${VERSION}`,
-    );
-    return (base ?? globalThis.fetch)(input, { ...init, headers });
-  };
-}
-
 export function createInterfaze(
   options: InterfazeProviderSettings = {},
 ): InterfazeProvider {

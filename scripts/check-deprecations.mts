@@ -21,6 +21,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** TypeScript reports forward slashes everywhere; Windows `path` APIs do not. */
 const normalize = (file: string) => file.split(path.sep).join('/');
 
+const MODULE_NOT_FOUND_CODES = new Set([2307, 2792]);
+
 function fail(message: string): never {
   console.error(`check-deprecations: ${message}`);
   process.exit(1);
@@ -249,7 +251,7 @@ try {
   // indistinguishable from "nothing is deprecated" unless we check for it.
   const unresolved = program
     .getSemanticDiagnostics()
-    .filter(({ code }) => code === 2307 || code === 2792);
+    .filter(({ code }) => MODULE_NOT_FOUND_CODES.has(code));
   if (unresolved.length > 0) {
     fail(
       'module resolution failed, so nothing could be checked:\n' +

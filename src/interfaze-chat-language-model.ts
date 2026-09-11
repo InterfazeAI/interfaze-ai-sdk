@@ -69,7 +69,10 @@ function mergeInterfazeMetadata(
 }
 
 /**
- * Fail fast on malformed `providerOptions.interfaze`.
+ * Fail fast on malformed `providerOptions.interfaze`. Without this a typo like
+ * `guard: 'ALL'` (string instead of array) is dropped silently, so a guardrail
+ * the caller believes is on never reaches the API. Unknown keys still pass
+ * through untouched.
  */
 async function validateInterfazeOptions(
   options: LanguageModelV4CallOptions,
