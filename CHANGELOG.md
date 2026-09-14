@@ -4,7 +4,7 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.2]
+## [Unreleased]
 
 Moves the documented call surface onto the AI SDK v7 APIs, hardens the file-part
 sentinel, and adds CI guards so neither can drift again.
