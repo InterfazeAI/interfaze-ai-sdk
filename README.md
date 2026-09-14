@@ -236,7 +236,11 @@ await generateText({
 Video is a `file` part with a `video/*` media type; Interfaze reads the URL server-side:
 
 ```ts
-{ type: "file", mediaType: "video/mp4", data: new URL("https://…/clip.mp4") }
+const clip = {
+  type: 'file',
+  mediaType: 'video/mp4',
+  data: new URL('https://example.com/clip.mp4'),
+};
 ```
 
 ## Guardrails

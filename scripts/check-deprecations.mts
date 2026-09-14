@@ -318,21 +318,31 @@ void providerMetadata;
     const parsed = docProgram.getSourceFile(file);
     if (parsed == null) fail(`could not read the scratch file for ${source}`);
 
-    if (docProgram.getSyntacticDiagnostics(parsed).length > 0) {
-      // A fragment rather than a statement — surfaced so the gap is visible.
-      console.warn(
-        `check-deprecations: ${source}:${snippet.startLine} does not parse on ` +
-          'its own and was not scanned',
-      );
-      continue;
+    const toReadmeLine = (offset = 0) => snippet.startLine - 2 + offset;
+
+    // Doc snippets must type-check
+    const compileErrors = [
+      ...docProgram.getSyntacticDiagnostics(parsed),
+      ...docProgram.getSemanticDiagnostics(parsed),
+    ];
+    for (const diagnostic of compileErrors) {
+      const at =
+        diagnostic.start != null
+          ? parsed.getLineAndCharacterOfPosition(diagnostic.start)
+          : undefined;
+      findings.push({
+        file: source,
+        line: toReadmeLine(at?.line ?? 1),
+        column: (at?.character ?? 0) + 1,
+        text: `does not compile — TS${diagnostic.code}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`,
+      });
     }
 
-    // Line 1 of the scratch file is the injected preamble.
     findings.push(...scan(docProgram, parsed, source, snippet.startLine - 2));
   }
 
   if (findings.length > 0) {
-    console.error(`deprecated AI SDK usage (${findings.length}):`);
+    console.error(`doc-snippet and deprecation issues (${findings.length}):`);
     for (const { file, line, column, text } of findings) {
       console.error(`  ${file}:${line}:${column}  ${text}`);
     }
@@ -340,8 +350,8 @@ void providerMetadata;
   }
 
   console.log(
-    `no deprecated AI SDK usage — ${config.fileNames.length} sources, ` +
-      `${snippets.length} doc snippets`,
+    `no deprecated AI SDK usage or doc-snippet errors — ` +
+      `${config.fileNames.length} sources, ${snippets.length} doc snippets`,
   );
 } finally {
   fs.rmSync(scratch, { recursive: true, force: true });

@@ -10,8 +10,17 @@ import {
   secureJsonParse,
 } from '@ai-sdk/provider-utils';
 
-// Plain-ASCII marker with a nonce that is random per process.
-const FILE_SENTINEL_PREFIX = `ai-sdk/interfaze:file-part:${globalThis.crypto.randomUUID()}:`;
+// Plain-ASCII marker carrying a nonce that is random per process.
+let fileSentinelPrefix: string | undefined;
+
+function getFileSentinelPrefix(): string {
+  if (fileSentinelPrefix === undefined) {
+    const nonce = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    const hex = Array.from(nonce, byte => byte.toString(16).padStart(2, '0'));
+    fileSentinelPrefix = `ai-sdk/interfaze:file-part:${hex.join('')}:`;
+  }
+  return fileSentinelPrefix;
+}
 
 /**
  * Media types `convertToOpenAICompatibleChatMessages` already expresses in a
@@ -36,17 +45,16 @@ interface InterfazeFilePayload {
 }
 
 function encodeFileSentinel(payload: InterfazeFilePayload): string {
-  return `${FILE_SENTINEL_PREFIX}${JSON.stringify(payload)}`;
+  return `${getFileSentinelPrefix()}${JSON.stringify(payload)}`;
 }
 
 function decodeFileSentinel(text: unknown): InterfazeFilePayload | undefined {
-  if (typeof text !== 'string' || !text.startsWith(FILE_SENTINEL_PREFIX)) {
+  const prefix = getFileSentinelPrefix();
+  if (typeof text !== 'string' || !text.startsWith(prefix)) {
     return undefined;
   }
   try {
-    return secureJsonParse(
-      text.slice(FILE_SENTINEL_PREFIX.length),
-    ) as InterfazeFilePayload;
+    return secureJsonParse(text.slice(prefix.length)) as InterfazeFilePayload;
   } catch {
     return undefined;
   }

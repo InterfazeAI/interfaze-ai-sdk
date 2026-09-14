@@ -320,17 +320,14 @@ describe('providerOptions validation', () => {
     ).rejects.toThrow(/invalid interfaze provider options/);
   });
 
-  it('passes unknown providerOptions keys through to the body untouched', async () => {
-    const { fetch, requests } = createCapturingFetchMock('interfaze-basic');
-    const model = modelWith(fetch);
+  it('rejects a typo of a known option rather than letting it bypass silently', async () => {
+    const model = modelWith(createJsonFixtureFetchMock('interfaze-basic'));
 
-    await model.doGenerate({
-      prompt: TEST_PROMPT,
-      providerOptions: {
-        interfaze: { precontext: [{ name: 'ocr', result: 'cached' }] },
-      },
-    });
-
-    expect(requests[0].precontext).toEqual([{ name: 'ocr', result: 'cached' }]);
+    await expect(
+      model.doGenerate({
+        prompt: TEST_PROMPT,
+        providerOptions: { interfaze: { gaurd: ['ALL'] } as never },
+      }),
+    ).rejects.toThrow(/invalid interfaze provider options/);
   });
 });
