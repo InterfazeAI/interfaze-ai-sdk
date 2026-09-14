@@ -1,7 +1,7 @@
 {
   "name": "@interfaze-ai/ai-sdk",
   "version": "1.0.2",
-  "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on providerMetadata.",
+  "description": "Community Vercel AI SDK provider for Interfaze (interfaze.ai) — chat, structured output, guardrails, reasoning, and internal-task precontext on finalStep.providerMetadata.",
   "type": "module",
   "license": "MIT",
   "author": "InterfazeAI",
@@ -27,6 +27,7 @@
     "build": "pnpm clean && tsup",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
+    "type-check:examples": "tsc -p tsconfig.examples.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:pkg": "publint --strict && attw --pack --profile esm-only",
@@ -35,6 +36,7 @@
     "test:coverage": "vitest run --coverage",
     "qa:live": "tsx scripts/e2e-live.ts",
     "check:versions": "node scripts/check-versions.mjs",
+    "check:deprecations": "tsx scripts/check-deprecations.mts",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
@@ -48,18 +50,18 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "ai": "^7.0.64",
     "prettier": "^3.9.6",
     "publint": "^0.3.23",
     "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "^5.8.3",
-    "vitest": "^4.1.6",
+    "vitest": "^4.1.11",
     "zod": "3.25.76"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"

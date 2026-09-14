@@ -1,0 +1,23 @@
+{
+  "id": "chatcmpl-interfaze-structured",
+  "object": "chat.completion",
+  "created": 1780000004,
+  "model": "interfaze",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "{\"city\":\"Paris\",\"country\":\"France\"}"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 11,
+    "total_tokens": 20
+  },
+  "vcache": false,
+  "precontext": [{ "name": "ocr", "result": { "text": "Paris, France" } }]
+}

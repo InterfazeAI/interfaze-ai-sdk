@@ -26,7 +26,9 @@ export const interfazeGuardCodes = [
   'ALL',
 ] as const;
 
-export const interfazeLanguageModelChatOptions = z.object({
+// `strictObject`, not `object`: an unrecognized key (e.g. a typo'd `gaurd`)
+// must be rejected, not silently stripped.
+export const interfazeLanguageModelChatOptions = z.strictObject({
   /** Enable guardrail categories; a match returns `unsafe <code>` as the message content. */
   guard: z.array(z.enum(interfazeGuardCodes)).optional(),
   /** Reasoning effort; also accepts Interfaze's `on` / `off` / `auto`. */

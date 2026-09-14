@@ -5,7 +5,7 @@ import { z } from 'zod';
 // Interfaze routes through a mixture-of-agents router, so give an explicit
 // instruction when you need a specific tool invoked.
 const { text, toolResults } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   tools: {
     weather: tool({
       description: 'Get the current weather for a location',

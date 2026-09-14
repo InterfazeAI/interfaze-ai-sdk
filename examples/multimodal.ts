@@ -5,7 +5,7 @@ import { generateText } from 'ai';
 
 // PDF
 const pdf = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -24,15 +24,16 @@ console.log('PDF:', pdf.text);
 
 // Image
 const image = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
       content: [
         { type: 'text', text: 'What is the name of person in photo?' },
         {
-          type: 'image',
-          image: new URL(
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL(
             'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
           ),
         },
@@ -44,7 +45,7 @@ console.log('Image:', image.text);
 
 // Video — a file part with a video/* media type; read server-side.
 const video = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -65,7 +66,7 @@ console.log('Video:', video.text);
 
 // Audio — any of wav / mp3 / m4a / ogg / flac.
 const audio = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',

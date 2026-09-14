@@ -1,0 +1,8 @@
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"role":"assistant"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"content":"{\"city\":"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"content":"\"Par"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"content":"is\",\"coun"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"content":"try\":\"Fra"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{"content":"nce\"}"}}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk"}
+{"id":"chatcmpl-interfaze-structured-stream","choices":[],"created":1780000005,"model":"interfaze","object":"chat.completion.chunk","usage":{"prompt_tokens":9,"completion_tokens":11,"total_tokens":20},"vcache":false}
