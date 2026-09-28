@@ -10,9 +10,9 @@ npx tsx examples/quickstart.ts
 
 - `quickstart.ts` — first request (`generateText`) + `vcache`
 - `streaming.ts` — `streamText` with precontext / reasoning at finish
-- `structured-output.ts` — `generateObject` with a Zod schema (image OCR)
+- `structured-output.ts` — `generateText` + `Output.object` with a Zod schema (image OCR)
 - `tools.ts` — function calling (tool round-trip)
-- `reasoning.ts` — `reasoningEffort` → `providerMetadata.interfaze.reasoning`
+- `reasoning.ts` — `reasoningEffort` → `finalStep.providerMetadata.interfaze.reasoning`
 - `guardrails.ts` — `guard` categories; a block returns `unsafe <code>`
 - `multimodal.ts` — image, audio, PDF, and video content parts
 - `precontext.ts` — precontext output (the internal tools Interfaze ran)

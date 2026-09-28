@@ -23,7 +23,7 @@ describe('InterfazeProvider', () => {
   describe('createInterfaze', () => {
     it('should create an InterfazeProvider instance with default options', () => {
       const provider = createInterfaze();
-      const model = provider('interfaze-beta') as any;
+      const model = provider('interfaze') as any;
       model.config.headers(); // apiKey is only resolved lazily, on request
 
       expect(loadApiKey).toHaveBeenCalledWith({
@@ -40,7 +40,7 @@ describe('InterfazeProvider', () => {
         headers: { 'Custom-Header': 'value' },
       };
       const provider = createInterfaze(options);
-      const model = provider('interfaze-beta') as any;
+      const model = provider('interfaze') as any;
       model.config.headers();
 
       expect(loadApiKey).toHaveBeenCalledWith({
@@ -50,25 +50,44 @@ describe('InterfazeProvider', () => {
       });
     });
 
-    it('should pass a versioned user-agent header', async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue(new Response('{}', { status: 200 }));
+    it('appends a versioned user-agent token on the real request path', async () => {
+      const fetchMock = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: 'x',
+              choices: [
+                {
+                  index: 0,
+                  finish_reason: 'stop',
+                  message: { role: 'assistant', content: 'ok' },
+                },
+              ],
+              usage: {
+                prompt_tokens: 1,
+                completion_tokens: 1,
+                total_tokens: 2,
+              },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      );
 
-      const provider = createInterfaze({ fetch: fetchMock });
-      const model = provider('interfaze-beta') as InstanceType<
-        typeof InterfazeChatLanguageModel
-      >;
-      const headers = (model as any).config.headers();
-
-      await fetchMock('https://api.interfaze.ai/v1/test', {
-        method: 'POST',
-        headers,
+      const provider = createInterfaze({ apiKey: 'k', fetch: fetchMock });
+      await provider('interfaze').doGenerate({
+        prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
       });
 
-      expect(fetchMock.mock.calls[0][1].headers['user-agent']).toContain(
+      const [, init] = fetchMock.mock.calls[0] as unknown as [
+        unknown,
+        { headers: Record<string, string> },
+      ];
+      const headers = init.headers;
+      expect(headers['user-agent']).toContain(
         '@interfaze-ai/ai-sdk/0.0.0-test',
       );
+      // The core SDK's own token must survive the append, not be replaced.
+      expect(headers['user-agent']).toContain('ai-sdk/provider-utils/');
     });
 
     it('maps client options to Interfaze headers', () => {
@@ -78,7 +97,7 @@ describe('InterfazeProvider', () => {
         bypassMoA: true,
         bypassCache: true,
       });
-      const headers = (provider('interfaze-beta') as any).config.headers();
+      const headers = (provider('interfaze') as any).config.headers();
       expect(headers['x-show-additional-info']).toBe('true');
       expect(headers['x-interfaze-bypass-moa']).toBe('true');
       expect(headers['x-interfaze-bypass-cache']).toBe('true');
@@ -86,14 +105,14 @@ describe('InterfazeProvider', () => {
 
     it('omits client-option headers when unset', () => {
       const headers = (
-        createInterfaze({ fetch: vi.fn() })('interfaze-beta') as any
+        createInterfaze({ fetch: vi.fn() })('interfaze') as any
       ).config.headers();
       expect(headers['x-interfaze-bypass-moa']).toBeUndefined();
     });
 
     it('should default the base URL to the Interfaze API', () => {
       const provider = createInterfaze({ fetch: vi.fn() });
-      const model = provider('interfaze-beta') as InstanceType<
+      const model = provider('interfaze') as InstanceType<
         typeof InterfazeChatLanguageModel
       >;
       expect((model as any).config.url({ path: '/chat/completions' })).toBe(
@@ -106,7 +125,7 @@ describe('InterfazeProvider', () => {
         baseURL: 'https://staging.interfaze.ai/v1/',
         fetch: vi.fn(),
       });
-      const model = provider('interfaze-beta') as InstanceType<
+      const model = provider('interfaze') as InstanceType<
         typeof InterfazeChatLanguageModel
       >;
       expect((model as any).config.url({ path: '/chat/completions' })).toBe(
@@ -116,15 +135,13 @@ describe('InterfazeProvider', () => {
 
     it('should return an InterfazeChatLanguageModel when called as a function', () => {
       const provider = createInterfaze();
-      expect(provider('interfaze-beta')).toBeInstanceOf(
-        InterfazeChatLanguageModel,
-      );
+      expect(provider('interfaze')).toBeInstanceOf(InterfazeChatLanguageModel);
     });
 
     it('serializes guard codes into a <guard> system message', () => {
-      const model = createInterfaze()('interfaze-beta') as any;
+      const model = createInterfaze()('interfaze') as any;
       const out = model.config.transformRequestBody({
-        model: 'interfaze-beta',
+        model: 'interfaze',
         messages: [{ role: 'user', content: 'hi' }],
         guard: ['S1', 'S12_IMAGE'],
       });
@@ -137,9 +154,9 @@ describe('InterfazeProvider', () => {
     });
 
     it('merges the guard tag into an existing string system message', () => {
-      const model = createInterfaze()('interfaze-beta') as any;
+      const model = createInterfaze()('interfaze') as any;
       const out = model.config.transformRequestBody({
-        model: 'interfaze-beta',
+        model: 'interfaze',
         messages: [
           { role: 'system', content: 'You are concise.' },
           { role: 'user', content: 'hi' },
@@ -156,7 +173,7 @@ describe('InterfazeProvider', () => {
   describe('languageModel', () => {
     it('should construct a language model with correct configuration', () => {
       const provider = createInterfaze();
-      expect(provider.languageModel('interfaze-beta')).toBeInstanceOf(
+      expect(provider.languageModel('interfaze')).toBeInstanceOf(
         InterfazeChatLanguageModel,
       );
     });
@@ -165,7 +182,7 @@ describe('InterfazeProvider', () => {
   describe('chat', () => {
     it('should construct a chat model with correct configuration', () => {
       const provider = createInterfaze();
-      expect(provider.chat('interfaze-beta')).toBeInstanceOf(
+      expect(provider.chat('interfaze')).toBeInstanceOf(
         InterfazeChatLanguageModel,
       );
     });

@@ -2,7 +2,7 @@
   "id": "chatcmpl-interfaze-inline-tags",
   "object": "chat.completion",
   "created": 1780000002,
-  "model": "interfaze-beta",
+  "model": "interfaze",
   "choices": [
     {
       "index": 0,

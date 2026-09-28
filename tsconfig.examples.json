@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "declaration": false,
+    "baseUrl": ".",
+    "paths": { "@interfaze-ai/ai-sdk": ["./src/index.ts"] }
+  },
+  "include": ["src", "examples", "scripts"]
+}

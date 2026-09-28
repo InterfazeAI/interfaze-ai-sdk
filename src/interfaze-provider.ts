@@ -127,6 +127,22 @@ export interface InterfazeProvider extends ProviderV4 {
 }
 
 /**
+ * Appends this package's user-agent token at send time. Putting it in the
+ * provider's static headers does not work: the AI SDK core sets its own
+ * `user-agent` on the per-call headers, which win the header merge and
+ * silently replace anything the provider configured.
+ */
+function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
+  return (input, init) => {
+    const headers = withUserAgentSuffix(
+      init?.headers ?? {},
+      `@interfaze-ai/ai-sdk/${VERSION}`,
+    );
+    return (base ?? globalThis.fetch)(input, { ...init, headers });
+  };
+}
+
+/**
  * Create an {@link InterfazeProvider} bound to the given settings.
  *
  * @param options - Provider settings such as `apiKey`, `baseURL`, and header toggles.
@@ -139,7 +155,7 @@ export interface InterfazeProvider extends ProviderV4 {
  *
  * const interfaze = createInterfaze({ apiKey: process.env.INTERFAZE_API_KEY });
  * const { text } = await generateText({
- *   model: interfaze('interfaze-beta'),
+ *   model: interfaze('interfaze'),
  *   prompt: 'Hello!',
  * });
  * ```
@@ -148,30 +164,24 @@ export function createInterfaze(
   options: InterfazeProviderSettings = {},
 ): InterfazeProvider {
   const baseURL = withoutTrailingSlash(options.baseURL ?? INTERFAZE_BASE_URL);
-  const getHeaders = () =>
-    withUserAgentSuffix(
-      {
-        Authorization: `Bearer ${loadApiKey({
-          apiKey: options.apiKey,
-          environmentVariableName: 'INTERFAZE_API_KEY',
-          description: 'Interfaze API key',
-        })}`,
-        ...(options.showAdditionalInfo
-          ? { 'x-show-additional-info': 'true' }
-          : {}),
-        ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
-        ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
-        ...options.headers,
-      },
-      `@interfaze-ai/ai-sdk/${VERSION}`,
-    );
+  const getHeaders = () => ({
+    Authorization: `Bearer ${loadApiKey({
+      apiKey: options.apiKey,
+      environmentVariableName: 'INTERFAZE_API_KEY',
+      description: 'Interfaze API key',
+    })}`,
+    ...(options.showAdditionalInfo ? { 'x-show-additional-info': 'true' } : {}),
+    ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
+    ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
+    ...options.headers,
+  });
 
   const createLanguageModel = (modelId: InterfazeChatModelId) => {
     return new InterfazeChatLanguageModel(modelId, {
       provider: `interfaze.chat`,
       url: ({ path }) => `${baseURL}${path}`,
       headers: getHeaders,
-      fetch: options.fetch,
+      fetch: withInterfazeUserAgent(options.fetch),
       errorStructure: interfazeErrorStructure,
       supportsStructuredOutputs: true,
       // Interfaze only sends the streaming usage frame when include_usage is set.

@@ -76,10 +76,10 @@ const SIDE_CLOSE: Record<string, string> = {
   '<precontext>': '</precontext>',
 };
 
-function suffixPrefixLen(s: string, tag: string): number {
-  for (let k = Math.min(s.length, tag.length - 1); k > 0; k--) {
-    if (s.slice(s.length - k) === tag.slice(0, k)) {
-      return k;
+function trailingPartialTagLength(text: string, tag: string): number {
+  for (let len = Math.min(text.length, tag.length - 1); len > 0; len--) {
+    if (text.slice(text.length - len) === tag.slice(0, len)) {
+      return len;
     }
   }
   return 0;
@@ -91,57 +91,66 @@ function suffixPrefixLen(s: string, tag: string): number {
  * enough of the stream has arrived to decide.
  */
 export class SideChannelFilter {
-  #buf = '';
-  #close: string | undefined;
+  #buffer = '';
+  #closingTag: string | undefined;
 
   feed(text: string): string {
-    this.#buf += text;
-    const out: string[] = [];
-    while (this.#buf) {
-      if (this.#close === undefined) {
-        const lt = this.#buf.indexOf('<');
-        if (lt === -1) {
-          out.push(this.#buf);
-          this.#buf = '';
+    this.#buffer += text;
+    const visible: string[] = [];
+
+    while (this.#buffer) {
+      if (this.#closingTag === undefined) {
+        const tagStart = this.#buffer.indexOf('<');
+        if (tagStart === -1) {
+          visible.push(this.#buffer);
+          this.#buffer = '';
           break;
         }
-        if (lt > 0) {
-          out.push(this.#buf.slice(0, lt));
-          this.#buf = this.#buf.slice(lt);
+        if (tagStart > 0) {
+          visible.push(this.#buffer.slice(0, tagStart));
+          this.#buffer = this.#buffer.slice(tagStart);
         }
-        const opened = SIDE_OPEN.find(t => this.#buf.startsWith(t));
-        if (opened) {
-          this.#close = SIDE_CLOSE[opened];
-          this.#buf = this.#buf.slice(opened.length);
+
+        const openingTag = SIDE_OPEN.find(tag => this.#buffer.startsWith(tag));
+        if (openingTag) {
+          this.#closingTag = SIDE_CLOSE[openingTag];
+          this.#buffer = this.#buffer.slice(openingTag.length);
           continue;
         }
-        if (SIDE_OPEN.some(t => t.startsWith(this.#buf))) {
+
+        if (SIDE_OPEN.some(tag => tag.startsWith(this.#buffer))) {
           break;
         }
-        out.push('<');
-        this.#buf = this.#buf.slice(1);
+
+        visible.push('<');
+        this.#buffer = this.#buffer.slice(1);
       } else {
-        const close = this.#close;
-        const end = this.#buf.indexOf(close);
-        if (end === -1) {
-          const keep = suffixPrefixLen(this.#buf, close);
-          this.#buf = keep ? this.#buf.slice(this.#buf.length - keep) : '';
+        const closeIndex = this.#buffer.indexOf(this.#closingTag);
+        if (closeIndex === -1) {
+          const partialLen = trailingPartialTagLength(
+            this.#buffer,
+            this.#closingTag,
+          );
+          this.#buffer = partialLen
+            ? this.#buffer.slice(this.#buffer.length - partialLen)
+            : '';
           break;
         }
-        this.#buf = this.#buf.slice(end + close.length);
-        this.#close = undefined;
+        this.#buffer = this.#buffer.slice(closeIndex + this.#closingTag.length);
+        this.#closingTag = undefined;
       }
     }
-    return out.join('');
+
+    return visible.join('');
   }
 
   flush(): string {
-    if (this.#close !== undefined) {
-      this.#buf = '';
+    if (this.#closingTag !== undefined) {
+      this.#buffer = '';
       return '';
     }
-    const rest = this.#buf;
-    this.#buf = '';
-    return rest;
+    const remaining = this.#buffer;
+    this.#buffer = '';
+    return remaining;
   }
 }

@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 6 * * 1' # weekly, Monday 06:00 UTC
 
+permissions:
+  contents: read
+
 concurrency:
   group: live-qa
   cancel-in-progress: true

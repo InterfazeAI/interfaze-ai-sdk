@@ -1,14 +1,16 @@
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-// generateObject with an image — OCR runs under the hood.
-const { object } = await generateObject({
-  model: interfaze('interfaze-beta'),
-  schema: z.object({
-    merchant: z.string(),
-    total: z.number(),
-    items: z.array(z.object({ name: z.string(), price: z.number() })),
+// Structured output with an image — OCR runs under the hood.
+const { output } = await generateText({
+  model: interfaze('interfaze'),
+  output: Output.object({
+    schema: z.object({
+      merchant: z.string(),
+      total: z.number(),
+      items: z.array(z.object({ name: z.string(), price: z.number() })),
+    }),
   }),
   messages: [
     {
@@ -16,12 +18,13 @@ const { object } = await generateObject({
       content: [
         { type: 'text', text: 'Extract this receipt.' },
         {
-          type: 'image',
-          image: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
         },
       ],
     },
   ],
 });
 
-console.log(object);
+console.log(output);

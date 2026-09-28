@@ -4,7 +4,7 @@ The community [AI SDK](https://ai-sdk.dev/docs) provider for [Interfaze](https:/
 
 [Docs](https://interfaze.ai/docs) · [limits](https://interfaze.ai/docs/limits) · [pricing](https://interfaze.ai/pricing) · [dashboard](https://interfaze.ai) · [TypeScript SDK](https://github.com/InterfazeAI/interfaze-js) · [Python SDK](https://github.com/InterfazeAI/interfaze-python)
 
-It brings Interfaze to the standard `generateText` / `streamText` / `generateObject` surface, and surfaces Interfaze's extras — the semantic-cache flag, reasoning, and internal-task `precontext` — on `providerMetadata`.
+It brings Interfaze to the standard `generateText` / `streamText` surface, and surfaces Interfaze's extras — the semantic-cache flag, reasoning, and internal-task `precontext` — on `finalStep.providerMetadata`.
 
 > Community provider, maintained by Interfaze. For the list of first-party providers see the [AI SDK docs](https://ai-sdk.dev/providers/ai-sdk-providers); for community providers, the [community list](https://ai-sdk.dev/providers/community-providers).
 
@@ -24,7 +24,7 @@ Import the default `interfaze` instance, or build one with `createInterfaze`:
 ```ts
 import { createInterfaze, interfaze } from '@interfaze-ai/ai-sdk';
 
-interfaze('interfaze-beta'); // default, reads INTERFAZE_API_KEY
+interfaze('interfaze'); // default, reads INTERFAZE_API_KEY
 
 const custom = createInterfaze({ apiKey: 'sk_...' });
 ```
@@ -35,16 +35,18 @@ Drop an image into the prompt and get a typed object back — Interfaze runs OCR
 
 ```ts
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-const { object, providerMetadata } = await generateObject({
-  model: interfaze('interfaze-beta'),
-  schema: z.object({
-    first_name: z.string(),
-    last_name: z.string(),
-    dob: z.string().describe('Date of birth on the ID'),
-    licence_number: z.string(),
+const { output, finalStep } = await generateText({
+  model: interfaze('interfaze'),
+  output: Output.object({
+    schema: z.object({
+      first_name: z.string(),
+      last_name: z.string(),
+      dob: z.string().describe('Date of birth on the ID'),
+      licence_number: z.string(),
+    }),
   }),
   messages: [
     {
@@ -52,8 +54,9 @@ const { object, providerMetadata } = await generateObject({
       content: [
         { type: 'text', text: 'Extract the details from this ID.' },
         {
-          type: 'image',
-          image: new URL(
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL(
             'https://r2public.jigsawstack.com/interfaze/examples/id.jpg',
           ),
         },
@@ -62,21 +65,28 @@ const { object, providerMetadata } = await generateObject({
   ],
 });
 
-console.log(object); // { first_name, last_name, dob, licence_number }
-console.log('OCR result:', providerMetadata?.interfaze?.precontext?.[0]); // the raw OCR
+console.log(output); // { first_name, last_name, dob, licence_number }
+
+// `providerMetadata` is typed as JSON, so narrow `precontext` to read it.
+const precontext = finalStep.providerMetadata?.interfaze?.precontext as
+  unknown[] | undefined;
+console.log('OCR result:', precontext?.[0]); // the raw OCR
 ```
 
 ## Precontext
 
-Alongside the answer, a response carries `precontext` — the raw output of any internal tool Interfaze ran while answering (OCR, web search, scrape, transcription, …). It lands on `providerMetadata.interfaze.precontext`:
+Alongside the answer, a response carries `precontext` — the raw output of any internal tool Interfaze ran while answering (OCR, web search, scrape, transcription, …). It lands on `finalStep.providerMetadata.interfaze.precontext`:
 
 ```ts
-const { text, providerMetadata } = await generateText({
-  model: interfaze('interfaze-beta'),
+const { text, finalStep } = await generateText({
+  model: interfaze('interfaze'),
   prompt: 'Which US public companies reported earnings today?',
 });
 
-for (const p of providerMetadata?.interfaze?.precontext ?? []) {
+const precontext = finalStep.providerMetadata?.interfaze?.precontext as
+  unknown[] | undefined;
+
+for (const p of precontext ?? []) {
   console.log(p); // e.g. { name: "search", result: { … } }
 }
 ```
@@ -90,45 +100,47 @@ import { interfaze } from '@interfaze-ai/ai-sdk';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'Which US public companies reported earnings today?',
 });
 ```
 
-A web search backs the answer here — the sources land on `providerMetadata.interfaze.precontext`.
+A web search backs the answer here — the sources land on `finalStep.providerMetadata.interfaze.precontext`.
 
 ### Streaming
 
-`streamText` streams the reply as it's generated; the inline `<think>` / `<precontext>` side-channels are stripped from the visible text, and `reasoning` is attached to `providerMetadata` when the stream finishes. Streamed `precontext` is only emitted when the provider is created with `showAdditionalInfo: true` (see [Client options](#client-options)); otherwise it's `undefined` at finish.
+`streamText` streams the reply as it's generated; the inline `<think>` / `<precontext>` side-channels are stripped from the visible text, and `reasoning` is attached to `finalStep.providerMetadata` when the stream finishes. Streamed `precontext` is only emitted when the provider is created with `showAdditionalInfo: true` (see [Client options](#client-options)); otherwise it's `undefined` at finish.
 
 ```ts
 const interfaze = createInterfaze({ showAdditionalInfo: true }); // for streamed precontext
 
-const { textStream, providerMetadata } = streamText({
-  model: interfaze('interfaze-beta'),
+const { textStream, finalStep } = streamText({
+  model: interfaze('interfaze'),
   prompt: "Summarize this week's top AI research and cite your sources.",
 });
 
 for await (const delta of textStream) process.stdout.write(delta);
 
-const meta = await providerMetadata; // meta?.interfaze?.reasoning; .precontext when showAdditionalInfo is set
+const meta = (await finalStep).providerMetadata; // meta?.interfaze?.reasoning; .precontext when showAdditionalInfo is set
 ```
 
 ## Structured output
 
-Interfaze supports structured outputs, so `generateObject` / `streamObject` work with a Zod schema:
+Interfaze supports structured outputs, so `generateText` / `streamText` accept an `Output` spec with a Zod schema:
 
 ```ts
 import { interfaze } from '@interfaze-ai/ai-sdk';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
-const { object } = await generateObject({
-  model: interfaze('interfaze-beta'),
-  schema: z.object({
-    merchant: z.string(),
-    total: z.number(),
-    items: z.array(z.object({ name: z.string(), price: z.number() })),
+const { output } = await generateText({
+  model: interfaze('interfaze'),
+  output: Output.object({
+    schema: z.object({
+      merchant: z.string(),
+      total: z.number(),
+      items: z.array(z.object({ name: z.string(), price: z.number() })),
+    }),
   }),
   messages: [
     {
@@ -136,8 +148,9 @@ const { object } = await generateObject({
       content: [
         { type: 'text', text: 'Extract this receipt.' },
         {
-          type: 'image',
-          image: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
+          type: 'file',
+          mediaType: 'image/jpeg',
+          data: new URL('https://jigsawstack.com/preview/vocr-example.jpg'),
         },
       ],
     },
@@ -155,7 +168,7 @@ import { generateText, tool } from 'ai';
 import { z } from 'zod';
 
 const { text, toolResults } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   tools: {
     weather: tool({
       description: 'Get the current weather for a location',
@@ -171,16 +184,16 @@ const { text, toolResults } = await generateText({
 
 ## Reasoning
 
-Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's `'on' | 'off' | 'auto'`); the reasoning text comes back on `providerMetadata.interfaze.reasoning`:
+Set `reasoningEffort` (`'minimal' | 'low' | 'medium' | 'high'`, plus Interfaze's `'on' | 'off' | 'auto'`); the reasoning text comes back on `finalStep.providerMetadata.interfaze.reasoning`:
 
 ```ts
-const { text, providerMetadata } = await generateText({
-  model: interfaze('interfaze-beta'),
+const { text, finalStep } = await generateText({
+  model: interfaze('interfaze'),
   prompt: 'Which region should we launch in first, and why?',
   providerOptions: { interfaze: { reasoningEffort: 'high' } },
 });
 
-providerMetadata?.interfaze?.reasoning; // string | undefined
+finalStep.providerMetadata?.interfaze?.reasoning; // string | undefined
 ```
 
 A semantic-cache hit replays a stored answer without reasoning — set `bypassCache: true` on the provider (see [Client options](#client-options)) when you need fresh reasoning every call.
@@ -203,7 +216,7 @@ Supported media types:
 
 ```ts
 await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   messages: [
     {
       role: 'user',
@@ -223,7 +236,11 @@ await generateText({
 Video is a `file` part with a `video/*` media type; Interfaze reads the URL server-side:
 
 ```ts
-{ type: "file", mediaType: "video/mp4", data: new URL("https://…/clip.mp4") }
+const clip = {
+  type: 'file',
+  mediaType: 'video/mp4',
+  data: new URL('https://example.com/clip.mp4'),
+};
 ```
 
 ## Guardrails
@@ -232,7 +249,7 @@ Enable safety categories with `guard`; a blocked request comes back as a normal 
 
 ```ts
 const { text } = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: '...',
   providerOptions: { interfaze: { guard: ['S1', 'S10', 'S12_IMAGE'] } },
 });
@@ -246,17 +263,17 @@ Codes are `S1`–`S14`, the image-only `S1_IMAGE` / `S12_IMAGE` / `S15_IMAGE`, a
 
 ## Interfaze metadata
 
-Interfaze returns fields a plain chat provider drops. They land on `providerMetadata.interfaze` for both `generateText` and `streamText`:
+Interfaze returns fields a plain chat provider drops. They land on `finalStep.providerMetadata.interfaze` for both `generateText` and `streamText`:
 
 ```ts
 const result = await generateText({
-  model: interfaze('interfaze-beta'),
+  model: interfaze('interfaze'),
   prompt: 'What is the weather in San Francisco?',
 });
 
-result.providerMetadata?.interfaze?.vcache; // boolean — semantic-cache hit
-result.providerMetadata?.interfaze?.reasoning; // string | undefined
-result.providerMetadata?.interfaze?.precontext; // unknown[] | undefined — OCR / web / scrape / … output
+result.finalStep.providerMetadata?.interfaze?.vcache; // boolean — semantic-cache hit
+result.finalStep.providerMetadata?.interfaze?.reasoning; // string | undefined
+result.finalStep.providerMetadata?.interfaze?.precontext; // unknown[] | undefined — OCR / web / scrape / … output
 ```
 
 ## Client options
@@ -281,7 +298,7 @@ Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP statu
 import { APICallError } from 'ai';
 
 try {
-  await generateText({ model: interfaze('interfaze-beta'), prompt: '...' });
+  await generateText({ model: interfaze('interfaze'), prompt: '...' });
 } catch (error) {
   if (APICallError.isInstance(error)) {
     error.statusCode; // e.g. 400, 401, 429
@@ -292,17 +309,17 @@ try {
 
 ## Capabilities
 
-| Use case                                | Entry point                                 |
-| --------------------------------------- | ------------------------------------------- |
-| [Text](#text)                           | `generateText`                              |
-| [Streaming](#streaming)                 | `streamText`                                |
-| [Structured output](#structured-output) | `generateObject` / `streamObject`           |
-| [Tools](#tools)                         | `tools`                                     |
-| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort` |
-| [Multimodal](#multimodal)               | `image` / `file` content parts              |
-| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`           |
-| [Precontext](#precontext)               | `providerMetadata.interfaze.precontext`     |
-| [Semantic cache](#interfaze-metadata)   | `providerMetadata.interfaze.vcache`         |
+| Use case                                | Entry point                                       |
+| --------------------------------------- | ------------------------------------------------- |
+| [Text](#text)                           | `generateText`                                    |
+| [Streaming](#streaming)                 | `streamText`                                      |
+| [Structured output](#structured-output) | `Output.object` / `Output.array`                  |
+| [Tools](#tools)                         | `tools`                                           |
+| [Reasoning](#reasoning)                 | `providerOptions.interfaze.reasoningEffort`       |
+| [Multimodal](#multimodal)               | `file` content parts                              |
+| [Guardrails](#guardrails)               | `providerOptions.interfaze.guard`                 |
+| [Precontext](#precontext)               | `finalStep.providerMetadata.interfaze.precontext` |
+| [Semantic cache](#interfaze-metadata)   | `finalStep.providerMetadata.interfaze.vcache`     |
 
 ## Examples
 

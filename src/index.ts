@@ -8,7 +8,7 @@
  * import { generateText } from 'ai';
  *
  * const { text } = await generateText({
- *   model: interfaze('interfaze-beta'),
+ *   model: interfaze('interfaze'),
  *   prompt: 'Write a haiku about TypeScript.',
  * });
  * ```
