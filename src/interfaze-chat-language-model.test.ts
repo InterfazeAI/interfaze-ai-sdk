@@ -240,6 +240,37 @@ describe('doStream', () => {
   });
 });
 
+describe('doStream in schema-less JSON mode', () => {
+  it('unwraps a ```json fence split across chunk boundaries', async () => {
+    const fetch = createStreamFixtureFetchMock('interfaze-json-fence-stream');
+    const model = modelWith(fetch);
+
+    const { stream } = await model.doStream({
+      prompt: TEST_PROMPT,
+      responseFormat: { type: 'json' },
+    });
+    const chunks = await convertStreamToArray(stream);
+
+    expect(visibleText(chunks)).toBe('{"result":"2026"}');
+  });
+
+  it('does not unwrap the fence when a schema is present (json_schema mode)', async () => {
+    const fetch = createStreamFixtureFetchMock('interfaze-json-fence-stream');
+    const model = modelWith(fetch);
+
+    const { stream } = await model.doStream({
+      prompt: TEST_PROMPT,
+      responseFormat: {
+        type: 'json',
+        schema: { type: 'object', properties: { result: { type: 'string' } } },
+      },
+    });
+    const chunks = await convertStreamToArray(stream);
+
+    expect(visibleText(chunks)).toBe('```json\n{"result":"2026"}\n```');
+  });
+});
+
 describe('file-part sentinel hardening', () => {
   it('does not convert attacker text that mimics the sentinel into a file part', async () => {
     const { fetch, requests } = createCapturingFetchMock('interfaze-basic');

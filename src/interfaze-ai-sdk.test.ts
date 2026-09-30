@@ -96,6 +96,28 @@ describe('streamText', () => {
   });
 });
 
+describe('streamText + Output.json', () => {
+  // Schema-less JSON mode, the shape the run-task docs use. Interfaze wraps
+  // the object in a ```json fence, which generateText already unwraps.
+  it('parses the object from a fenced stream', async () => {
+    const { partialOutputStream, output } = streamText({
+      model: modelWith(
+        createStreamFixtureFetchMock('interfaze-json-fence-stream'),
+      ),
+      output: Output.json(),
+      prompt: 'Magic number as {result}.',
+    });
+
+    const partials: unknown[] = [];
+    for await (const partial of partialOutputStream) {
+      partials.push(partial);
+    }
+
+    expect(partials.length).toBeGreaterThan(0);
+    expect(await output).toEqual({ result: '2026' });
+  });
+});
+
 describe('generateText + Output.object', () => {
   it('returns the typed output alongside interfaze metadata', async () => {
     const { output, finalStep } = await generateText({

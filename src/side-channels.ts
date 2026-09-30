@@ -70,6 +70,62 @@ export function stripJsonFence(content: string): string {
     .trim();
 }
 
+const OPENING_FENCE = /^```(?:json)?\s*/i;
+
+/**
+ * Streaming counterpart of {@link stripJsonFence}. Holds back the start of the
+ * stream until it can tell whether a fence opens it, then holds back any
+ * trailing whitespace and backticks, since those may be the closing fence.
+ * Content that doesn't open with a fence passes through untouched.
+ */
+export class JsonFenceFilter {
+  #state: 'start' | 'fenced' | 'plain' = 'start';
+  #held = '';
+
+  feed(text: string): string {
+    if (this.#state === 'plain') {
+      return text;
+    }
+
+    this.#held += text;
+
+    if (this.#state === 'start') {
+      const trimmed = this.#held.trimStart();
+      if (trimmed.length === 0 || '```'.startsWith(trimmed)) {
+        return '';
+      }
+      if (!trimmed.startsWith('```')) {
+        this.#state = 'plain';
+        const out = this.#held;
+        this.#held = '';
+        return out;
+      }
+      const opening = OPENING_FENCE.exec(trimmed)![0];
+      const rest = trimmed.slice(opening.length);
+      // Wait for the whole opening line: "```js" may still become "```json".
+      if (
+        rest.length === 0 ||
+        (opening === '```' && 'json'.startsWith(rest.toLowerCase()))
+      ) {
+        return '';
+      }
+      this.#state = 'fenced';
+      this.#held = rest;
+    }
+
+    const tail = /[\s`]*$/.exec(this.#held)![0];
+    const out = this.#held.slice(0, this.#held.length - tail.length);
+    this.#held = tail;
+    return out;
+  }
+
+  flush(): string {
+    const held = this.#held;
+    this.#held = '';
+    return this.#state === 'fenced' ? held.replace(/\s*```\s*$/, '') : held;
+  }
+}
+
 const SIDE_OPEN = ['<think>', '<precontext>'] as const;
 const SIDE_CLOSE: Record<string, string> = {
   '<think>': '</think>',
