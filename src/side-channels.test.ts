@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  JsonFenceFilter,
   SideChannelFilter,
   stripJsonFence,
   stripSideChannels,
@@ -133,6 +134,39 @@ describe('SideChannelFilter', () => {
     const filter = new SideChannelFilter();
     const visible = filter.feed('trailing text');
     expect(visible).toBe('trailing text');
+    expect(filter.flush()).toBe('');
+  });
+});
+
+describe('JsonFenceFilter', () => {
+  const run = (...parts: string[]) => {
+    const filter = new JsonFenceFilter();
+    return parts.map(part => filter.feed(part)).join('') + filter.flush();
+  };
+
+  it('unwraps a fence delivered in a single chunk', () => {
+    expect(run('```json\n{"result":"2026"}\n```')).toBe('{"result":"2026"}');
+  });
+
+  it('unwraps a fence whose markers are split across chunks', () => {
+    expect(run('``', '`js', 'on\n{"a":', '1}\n`', '``')).toBe('{"a":1}');
+  });
+
+  it('unwraps a bare ``` fence', () => {
+    expect(run('```\n', '{"a":1}', '\n```\n')).toBe('{"a":1}');
+  });
+
+  it('passes unfenced content through as it arrives', () => {
+    const filter = new JsonFenceFilter();
+    expect(filter.feed('{"a":')).toBe('{"a":');
+    expect(filter.feed('"`x`"}')).toBe('"`x`"}');
+    expect(filter.flush()).toBe('');
+  });
+
+  it('releases backticks held at a chunk edge when more content follows', () => {
+    const filter = new JsonFenceFilter();
+    expect(filter.feed('```json\n{"a":"x`')).toBe('{"a":"x');
+    expect(filter.feed('"}')).toBe('`"}');
     expect(filter.flush()).toBe('');
   });
 });

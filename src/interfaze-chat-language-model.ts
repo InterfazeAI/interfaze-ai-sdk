@@ -20,6 +20,7 @@ import {
 } from './interfaze-chat-language-model-options';
 import { injectInterfazeFileSentinels } from './interfaze-file-parts';
 import {
+  JsonFenceFilter,
   SideChannelFilter,
   stripJsonFence,
   stripSideChannels,
@@ -157,6 +158,12 @@ export class InterfazeChatLanguageModel
     });
 
     const filter = new SideChannelFilter();
+    // Same unwrap doGenerate does, applied as the text streams, so partial
+    // and final JSON parsing in `streamText` see the bare object.
+    const fence = isFencedJsonMode(options.responseFormat)
+      ? new JsonFenceFilter()
+      : undefined;
+    const unfence = (text: string) => (fence ? fence.feed(text) : text);
     let rawAccumulated = '';
     let emittedAccumulated = '';
     let textId: string | undefined;
@@ -173,9 +180,10 @@ export class InterfazeChatLanguageModel
               if (part.delta.length > 0) {
                 rawAccumulated += part.delta;
                 const visible = filter.feed(part.delta);
-                if (visible.length > 0) {
-                  emittedAccumulated += visible;
-                  controller.enqueue({ ...part, delta: visible });
+                emittedAccumulated += visible;
+                const delta = unfence(visible);
+                if (delta.length > 0) {
+                  controller.enqueue({ ...part, delta });
                 }
               }
               return;
@@ -184,12 +192,13 @@ export class InterfazeChatLanguageModel
             if (part.type === 'text-end') {
               textId = part.id;
               const tail = filter.flush();
-              if (tail.length > 0) {
-                emittedAccumulated += tail;
+              emittedAccumulated += tail;
+              const delta = unfence(tail) + (fence?.flush() ?? '');
+              if (delta.length > 0) {
                 controller.enqueue({
                   type: 'text-delta',
                   id: part.id,
-                  delta: tail,
+                  delta,
                 });
               }
               controller.enqueue(part);
