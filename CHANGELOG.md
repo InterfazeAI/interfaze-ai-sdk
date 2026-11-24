@@ -14,6 +14,7 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 
 ### Changed
 
+- When the keyless daily limit is reached, the `429` error (code `keyless_daily_limit_exceeded`) reaches you after one request, as an `APICallError` with `isRetryable: false`. The AI SDK does not retry it and does not wait. Other `429` errors, such as the in-flight limit, and all other statuses keep the AI SDK retry default.
 - Without a key, browsers (a global `document`) throw `LoadAPIKeyError` before the provider sends a request. The check does not depend on `process`, so a bundler's `process` polyfill does not change it. A key or an `Authorization` header skips the check.
 - An empty or whitespace-only `apiKey` falls back to `INTERFAZE_API_KEY`, and an empty or whitespace-only `INTERFAZE_API_KEY` counts as unset. Neither sends an empty `Bearer` header.
 

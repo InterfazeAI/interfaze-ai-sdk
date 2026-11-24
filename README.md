@@ -300,7 +300,7 @@ const interfaze = createInterfaze({
 
 ## Errors
 
-Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body. By default the AI SDK retries `408`, `409`, `429` and `5xx` errors twice. When the last retry fails, it throws a `RetryError`, and `error.lastError` holds the `APICallError`:
+Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body. By default the AI SDK retries `408`, `409`, `429` and `5xx` errors twice. When the last retry fails, it throws a `RetryError`, and `error.lastError` holds the `APICallError`. When the keyless daily limit is reached, the client throws the `429` at once and does not retry it.
 
 ```ts
 import { APICallError, RetryError } from 'ai';

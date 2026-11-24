@@ -31,9 +31,11 @@ const EXPLICIT_KEY = 'sk-test-explicit';
 const OPENAI_KEY = 'sk-openai-synthetic';
 const CUSTOM_AUTHORIZATION = 'Custom abc';
 const NO_RETRIES = 0;
+const SINGLE_ATTEMPT = 1;
 const DEFAULT_ATTEMPTS = 3;
 const DAILY_RETRY_AFTER_SECONDS = 3600;
 const DAILY_RESET_EPOCH_SECONDS = 1_900_000_000;
+const MAX_DAILY_LIMIT_MS = 2000;
 
 const BLANK_KEYS = ['', ' ', ' \n'];
 const AUTHORIZATION_SPELLINGS = [
@@ -219,6 +221,36 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
       expect(sentAuthorizations(fetch)).toEqual([null]);
     });
 
+    it('throws the keyless daily limit after one request, without a wait', async () => {
+      const fetch = errorFetch(429, dailyLimitBody, dailyLimitHeaders);
+      const model = createInterfaze({ fetch })('interfaze');
+      const startedAt = Date.now();
+
+      const result = run(model);
+
+      await expect(result).rejects.toSatisfy(APICallError.isInstance);
+      await expect(result).rejects.toMatchObject({
+        statusCode: 429,
+        isRetryable: false,
+        message: dailyLimitBody.error.message,
+        data: dailyLimitBody,
+        responseHeaders: dailyLimitHeaders,
+      });
+      expect(Date.now() - startedAt).toBeLessThan(MAX_DAILY_LIMIT_MS);
+      expect(fetch).toHaveBeenCalledTimes(SINGLE_ATTEMPT);
+      expect(sentAuthorizations(fetch)).toEqual([null]);
+    });
+
+    it('does not retry the keyless daily limit when a key is set', async () => {
+      const fetch = errorFetch(429, dailyLimitBody, dailyLimitHeaders);
+      const model = createInterfaze({ apiKey: EXPLICIT_KEY, fetch })(
+        'interfaze',
+      );
+
+      await expect(run(model)).rejects.toSatisfy(APICallError.isInstance);
+      expect(fetch).toHaveBeenCalledTimes(SINGLE_ATTEMPT);
+    });
+
     it('retries a keyless in-flight 429 and then throws a RetryError', async () => {
       vi.useFakeTimers();
       const fetch = errorFetch(429, inflightLimitBody, inflightLimitHeaders);
@@ -251,7 +283,7 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
         isRetryable: true,
         data: inflightLimitBody,
       });
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledTimes(SINGLE_ATTEMPT);
     });
   });
 
@@ -467,5 +499,79 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
         expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
       },
     );
+  });
+});
+
+describe.each(modes)('$name retry classification', ({ run }) => {
+  const retryableStatuses = [408, 409, 429, 500, 503];
+  const permanentStatuses = [400, 401, 403, 404, 422];
+  const otherCodeBody = {
+    error: { ...dailyLimitBody.error, code: 'rate_limit_exceeded' },
+  } satisfies InterfazeErrorData;
+
+  const rejection = (transport: Mock<typeof fetch>) =>
+    run(createInterfaze({ fetch: transport })('interfaze'), {
+      maxRetries: NO_RETRIES,
+    });
+
+  it.each(retryableStatuses)('keeps %i retryable', async status => {
+    const fetch = errorFetch(status, invalidKeyBody);
+
+    await expect(rejection(fetch)).rejects.toMatchObject({
+      statusCode: status,
+      isRetryable: true,
+    });
+  });
+
+  it.each(permanentStatuses)('keeps %i not retryable', async status => {
+    const fetch = errorFetch(status, invalidKeyBody);
+
+    await expect(rejection(fetch)).rejects.toMatchObject({
+      statusCode: status,
+      isRetryable: false,
+    });
+  });
+
+  it.each(retryableStatuses.filter(status => status !== 429))(
+    'keeps %i retryable when the body has the daily-limit code',
+    async status => {
+      const fetch = errorFetch(status, dailyLimitBody);
+
+      await expect(rejection(fetch)).rejects.toMatchObject({
+        statusCode: status,
+        isRetryable: true,
+      });
+    },
+  );
+
+  it('keeps a 429 with another code retryable', async () => {
+    const fetch = errorFetch(429, otherCodeBody);
+
+    await expect(rejection(fetch)).rejects.toMatchObject({
+      statusCode: 429,
+      isRetryable: true,
+    });
+  });
+
+  it('keeps a 429 with an unparseable body retryable', async () => {
+    const transport = vi.fn<typeof fetch>(
+      async () => new Response('slow down', { status: 429 }),
+    );
+
+    await expect(rejection(transport)).rejects.toMatchObject({
+      statusCode: 429,
+      isRetryable: true,
+    });
+  });
+
+  it('keeps a 429 with an empty body retryable', async () => {
+    const transport = vi.fn<typeof fetch>(
+      async () => new Response('', { status: 429 }),
+    );
+
+    await expect(rejection(transport)).rejects.toMatchObject({
+      statusCode: 429,
+      isRetryable: true,
+    });
   });
 });

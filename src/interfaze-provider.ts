@@ -54,9 +54,32 @@ type _AssertErrorDataMatchesSchema = Assert<
 
 const HTTPS_URL = /^https:\/\/.+$/;
 
+const HTTP_TOO_MANY_REQUESTS = 429;
+const KEYLESS_DAILY_LIMIT_CODE = 'keyless_daily_limit_exceeded';
+
+// Mirrors the retry default of `APICallError`: 408, 409, 429 and 5xx.
+const isRetryableStatus = (status: number): boolean =>
+  status === 408 ||
+  status === 409 ||
+  status === HTTP_TOO_MANY_REQUESTS ||
+  status >= 500;
+
+// A keyless daily limit lasts for hours, so a retry cannot succeed. Every
+// other error keeps the default retry rule.
+const isRetryableResponse = (
+  response: Response,
+  error?: InterfazeErrorData,
+): boolean =>
+  isRetryableStatus(response.status) &&
+  !(
+    response.status === HTTP_TOO_MANY_REQUESTS &&
+    error?.error.code === KEYLESS_DAILY_LIMIT_CODE
+  );
+
 const interfazeErrorStructure: ProviderErrorStructure<InterfazeErrorData> = {
   errorSchema: interfazeErrorSchema,
   errorToMessage: data => data.error.message,
+  isRetryable: isRetryableResponse,
 };
 
 /** Serialize guardrail categories into a `<guard>…</guard>` system message. */
