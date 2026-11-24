@@ -17,6 +17,12 @@ npm install @interfaze-ai/ai-sdk
 
 Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaze`). Get a key from the [Interfaze dashboard](https://interfaze.ai).
 
+### Keyless access
+
+Keyless access is in the `Unreleased` section of the [changelog](./CHANGELOG.md). Version 1.0.3 and earlier require a key.
+
+In server-side code, you can call Interfaze without a key. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, the provider sends the request without an `Authorization` header. Interfaze limits the number of keyless requests from each IP address. A request over the limit gets a `429` error whose message tells you how to get a key. In a browser, you must pass `apiKey`. See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) and the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
+
 ## Setup
 
 Import the default `interfaze` instance, or build one with `createInterfaze`:
@@ -323,7 +329,7 @@ try {
 
 ## Examples
 
-Runnable snippets in [`examples/`](./examples) — one per feature (quickstart, streaming, structured output, tools, reasoning, guardrails, multimodal, precontext, errors). Set `INTERFAZE_API_KEY`, then `npx tsx examples/quickstart.ts`.
+Runnable snippets in [`examples/`](./examples) — one per feature (quickstart, streaming, structured output, tools, reasoning, guardrails, multimodal, precontext, errors, keyless). Set `INTERFAZE_API_KEY`, then `npx tsx examples/quickstart.ts`.
 
 ## Documentation
 

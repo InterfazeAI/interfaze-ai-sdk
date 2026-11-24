@@ -1,19 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createInterfaze } from './interfaze-provider';
-import { loadApiKey } from '@ai-sdk/provider-utils';
 import { InterfazeChatLanguageModel } from './interfaze-chat-language-model';
 
 vi.mock('./version', () => ({
   VERSION: '0.0.0-test',
 }));
-
-vi.mock('@ai-sdk/provider-utils', async () => {
-  const actual = await vi.importActual('@ai-sdk/provider-utils');
-  return {
-    ...actual,
-    loadApiKey: vi.fn().mockReturnValue('mock-api-key'),
-  };
-});
 
 describe('InterfazeProvider', () => {
   beforeEach(() => {
@@ -21,35 +12,6 @@ describe('InterfazeProvider', () => {
   });
 
   describe('createInterfaze', () => {
-    it('should create an InterfazeProvider instance with default options', () => {
-      const provider = createInterfaze();
-      const model = provider('interfaze') as any;
-      model.config.headers(); // apiKey is only resolved lazily, on request
-
-      expect(loadApiKey).toHaveBeenCalledWith({
-        apiKey: undefined,
-        environmentVariableName: 'INTERFAZE_API_KEY',
-        description: 'Interfaze API key',
-      });
-    });
-
-    it('should create an InterfazeProvider instance with custom options', () => {
-      const options = {
-        apiKey: 'custom-key',
-        baseURL: 'https://custom.url',
-        headers: { 'Custom-Header': 'value' },
-      };
-      const provider = createInterfaze(options);
-      const model = provider('interfaze') as any;
-      model.config.headers();
-
-      expect(loadApiKey).toHaveBeenCalledWith({
-        apiKey: 'custom-key',
-        environmentVariableName: 'INTERFAZE_API_KEY',
-        description: 'Interfaze API key',
-      });
-    });
-
     it('appends a versioned user-agent token on the real request path', async () => {
       const fetchMock = vi.fn(
         async () =>

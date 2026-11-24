@@ -1,11 +1,12 @@
 import type { ProviderErrorStructure } from '@ai-sdk/openai-compatible';
 import {
+  LoadAPIKeyError,
   NoSuchModelError,
   type LanguageModelV4,
   type ProviderV4,
 } from '@ai-sdk/provider';
 import {
-  loadApiKey,
+  loadOptionalSetting,
   withoutTrailingSlash,
   withUserAgentSuffix,
   type FetchFunction,
@@ -99,7 +100,12 @@ function transformInterfazeRequestBody(
 
 /** Configuration for {@link createInterfaze}. */
 export interface InterfazeProviderSettings {
-  /** API key; defaults to the `INTERFAZE_API_KEY` environment variable. */
+  /**
+   * API key; defaults to the `INTERFAZE_API_KEY` environment variable. Without
+   * either, server-side requests omit the `Authorization` header and use
+   * keyless access. Runtimes without environment variables, such as
+   * browsers, must set this.
+   */
   apiKey?: string;
   /** Base URL for the API; defaults to {@link INTERFAZE_BASE_URL}. */
   baseURL?: string;
@@ -142,6 +148,32 @@ function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
   };
 }
 
+const isNonBlank = (value: string | undefined): value is string =>
+  Boolean(value?.trim());
+
+/**
+ * Builds the `Authorization` header for one request. A nonblank `apiKey` wins
+ * over a nonblank `INTERFAZE_API_KEY`. Without either, it returns no header,
+ * so the request uses keyless access. Runtimes without `process` (browsers)
+ * still need an explicit `apiKey` and fail before they send a request.
+ */
+function authorizationHeader(apiKey: string | undefined): {
+  Authorization?: string;
+} {
+  if (isNonBlank(apiKey)) return { Authorization: `Bearer ${apiKey}` };
+  if (typeof process === 'undefined') {
+    throw new LoadAPIKeyError({
+      message:
+        "Interfaze API key is missing. Pass it using the 'apiKey' parameter. Environment variables are not supported in this environment.",
+    });
+  }
+  const envKey = loadOptionalSetting({
+    settingValue: undefined,
+    environmentVariableName: 'INTERFAZE_API_KEY',
+  });
+  return isNonBlank(envKey) ? { Authorization: `Bearer ${envKey}` } : {};
+}
+
 /**
  * Create an {@link InterfazeProvider} bound to the given settings.
  *
@@ -165,11 +197,7 @@ export function createInterfaze(
 ): InterfazeProvider {
   const baseURL = withoutTrailingSlash(options.baseURL ?? INTERFAZE_BASE_URL);
   const getHeaders = () => ({
-    Authorization: `Bearer ${loadApiKey({
-      apiKey: options.apiKey,
-      environmentVariableName: 'INTERFAZE_API_KEY',
-      description: 'Interfaze API key',
-    })}`,
+    ...authorizationHeader(options.apiKey),
     ...(options.showAdditionalInfo ? { 'x-show-additional-info': 'true' } : {}),
     ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
     ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
@@ -219,5 +247,8 @@ export function createInterfaze(
   return provider;
 }
 
-/** Default provider instance, configured from the environment (`INTERFAZE_API_KEY`). */
+/**
+ * Default provider instance. It reads `INTERFAZE_API_KEY` for each request and
+ * uses keyless access when the variable is unset.
+ */
 export const interfaze: InterfazeProvider = createInterfaze();

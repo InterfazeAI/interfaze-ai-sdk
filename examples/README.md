@@ -17,3 +17,4 @@ npx tsx examples/quickstart.ts
 - `multimodal.ts` — image, audio, PDF, and video content parts
 - `precontext.ts` — precontext output (the internal tools Interfaze ran)
 - `errors.ts` — catching and narrowing `APICallError`
+- `keyless.ts` — a server-side request without a key (run with `INTERFAZE_API_KEY` unset). Needs a release after 1.0.3. See the [changelog](../CHANGELOG.md).
