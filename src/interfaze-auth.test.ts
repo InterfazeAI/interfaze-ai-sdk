@@ -414,16 +414,6 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
 
       expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
     });
-
-    it('requires a key when there is a document', async () => {
-      vi.stubGlobal('document', {});
-      const fetch = succeed();
-
-      await expect(
-        run(createInterfaze({ fetch })('interfaze')),
-      ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
-      expect(fetch).not.toHaveBeenCalled();
-    });
   });
 
   describe('browsers with a process polyfill', () => {
@@ -499,6 +489,26 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
         expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
       },
     );
+  });
+});
+
+// streamText leaves an unhandled rejection for any stream error when `process` is missing,
+// so this case runs through generateText. The streamText guard runs in the polyfill tests above.
+describe('a browser without process', () => {
+  it('requires a key and sends no request', async () => {
+    vi.stubGlobal('process', undefined);
+    vi.stubGlobal('document', {});
+    const transport = vi.fn<typeof fetch>(
+      createJsonFixtureFetchMock('interfaze-basic'),
+    );
+
+    await expect(
+      generateText({
+        model: createInterfaze({ fetch: transport })('interfaze'),
+        prompt: PROMPT,
+      }),
+    ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
+    expect(transport).not.toHaveBeenCalled();
   });
 });
 
