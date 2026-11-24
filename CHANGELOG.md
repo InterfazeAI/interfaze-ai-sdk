@@ -8,11 +8,14 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 
 ### Added
 
-- Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests without an `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access). Browsers and runtimes without environment variables still need `apiKey`: without a key, they throw `LoadAPIKeyError` before they send a request.
+- Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests with no `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
+- Runtimes without `process`, such as Cloudflare Workers without `nodejs_compat`, send keyless requests. They read no environment key.
+- An `Authorization` header that you set in `headers` or in the per-request headers counts as a key. The provider sends it as you set it, in any letter case, and sends no second `Authorization` header.
 
 ### Changed
 
-- An empty `apiKey` falls back to `INTERFAZE_API_KEY`, and an empty `INTERFAZE_API_KEY` counts as unset. Neither sends an empty `Bearer` header.
+- Without a key, browsers (a global `document`) throw `LoadAPIKeyError` before the provider sends a request. The check does not depend on `process`, so a bundler's `process` polyfill does not change it. A key or an `Authorization` header skips the check.
+- An empty or whitespace-only `apiKey` falls back to `INTERFAZE_API_KEY`, and an empty or whitespace-only `INTERFAZE_API_KEY` counts as unset. Neither sends an empty `Bearer` header.
 
 ## [1.0.3]
 

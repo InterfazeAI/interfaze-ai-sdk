@@ -103,8 +103,7 @@ export interface InterfazeProviderSettings {
   /**
    * API key; defaults to the `INTERFAZE_API_KEY` environment variable. Without
    * either, server-side requests omit the `Authorization` header and use
-   * keyless access. Browsers and runtimes without environment variables
-   * must set this.
+   * keyless access. Browsers must set this or an `Authorization` header.
    */
   apiKey?: string;
   /** Base URL for the API; defaults to {@link INTERFAZE_BASE_URL}. */
@@ -132,55 +131,47 @@ export interface InterfazeProvider extends ProviderV4 {
   textEmbeddingModel(modelId: string): never;
 }
 
+const nonBlank = (value: string | undefined): string | undefined =>
+  value?.trim() || undefined;
+
 /**
- * Appends this package's user-agent token at send time. Putting it in the
- * provider's static headers does not work: the AI SDK core sets its own
- * `user-agent` on the per-call headers, which win the header merge and
- * silently replace anything the provider configured.
+ * Resolves the API key: a nonblank `apiKey` wins over a nonblank
+ * `INTERFAZE_API_KEY`. Runtimes without `process` have no environment key.
  */
-function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
-  return (input, init) => {
+const resolveApiKey = (apiKey: string | undefined): string | undefined =>
+  nonBlank(apiKey) ??
+  nonBlank(
+    loadOptionalSetting({
+      settingValue: undefined,
+      environmentVariableName: 'INTERFAZE_API_KEY',
+    }),
+  );
+
+/**
+ * Wraps `fetch` at send time. It appends this package's user-agent token.
+ * Putting the token in the provider's static headers does not work: the AI SDK
+ * core sets its own `user-agent` on the per-call headers, which win the header
+ * merge and silently replace anything the provider configured.
+ *
+ * It also guards browsers. The API rejects keyless browser calls, so a request
+ * without an `Authorization` header fails here with `LoadAPIKeyError` when
+ * `document` exists, even if a bundler polyfills `process`. The header can come
+ * from the key, from `headers` or from the per-request headers.
+ */
+function withInterfazeFetch(base?: FetchFunction): FetchFunction {
+  return async (input, init) => {
     const headers = withUserAgentSuffix(
       init?.headers ?? {},
       `@interfaze-ai/ai-sdk/${VERSION}`,
     );
+    if (!headers.authorization && 'document' in globalThis) {
+      throw new LoadAPIKeyError({
+        message:
+          "Interfaze API key is missing. Pass it using the 'apiKey' parameter. The API rejects keyless requests from browsers.",
+      });
+    }
     return (base ?? globalThis.fetch)(input, { ...init, headers });
   };
-}
-
-const isNonBlank = (value: string | undefined): value is string =>
-  Boolean(value?.trim());
-
-/**
- * Builds the `Authorization` header for one request. A nonblank `apiKey` wins
- * over a nonblank `INTERFAZE_API_KEY`. Without either, it returns no header,
- * so a server-side request uses keyless access. Without a key, runtimes
- * without `process` fail before they send a request. Browsers (a global
- * `document`) fail too, also with a `process` polyfill, because the API
- * rejects keyless browser calls.
- */
-function authorizationHeader(apiKey: string | undefined): {
-  Authorization?: string;
-} {
-  if (isNonBlank(apiKey)) return { Authorization: `Bearer ${apiKey}` };
-  if (typeof process === 'undefined') {
-    throw new LoadAPIKeyError({
-      message:
-        "Interfaze API key is missing. Pass it using the 'apiKey' parameter. Environment variables are not supported in this environment.",
-    });
-  }
-  const envKey = loadOptionalSetting({
-    settingValue: undefined,
-    environmentVariableName: 'INTERFAZE_API_KEY',
-  });
-  if (isNonBlank(envKey)) return { Authorization: `Bearer ${envKey}` };
-  if ('document' in globalThis) {
-    throw new LoadAPIKeyError({
-      message:
-        "Interfaze API key is missing. Pass it using the 'apiKey' parameter. The API rejects keyless requests from browsers.",
-    });
-  }
-  return {};
 }
 
 /**
@@ -205,20 +196,27 @@ export function createInterfaze(
   options: InterfazeProviderSettings = {},
 ): InterfazeProvider {
   const baseURL = withoutTrailingSlash(options.baseURL ?? INTERFAZE_BASE_URL);
-  const getHeaders = () => ({
-    ...authorizationHeader(options.apiKey),
-    ...(options.showAdditionalInfo ? { 'x-show-additional-info': 'true' } : {}),
-    ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
-    ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
-    ...options.headers,
-  });
+  // Resolves the key for each request. A caller `Authorization` header in
+  // `headers` or in the per-request headers replaces the key header.
+  const getHeaders = () => {
+    const apiKey = resolveApiKey(options.apiKey);
+    return {
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      ...(options.showAdditionalInfo
+        ? { 'x-show-additional-info': 'true' }
+        : {}),
+      ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
+      ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
+      ...options.headers,
+    };
+  };
 
   const createLanguageModel = (modelId: InterfazeChatModelId) => {
     return new InterfazeChatLanguageModel(modelId, {
       provider: `interfaze.chat`,
       url: ({ path }) => `${baseURL}${path}`,
       headers: getHeaders,
-      fetch: withInterfazeUserAgent(options.fetch),
+      fetch: withInterfazeFetch(options.fetch),
       errorStructure: interfazeErrorStructure,
       supportsStructuredOutputs: true,
       // Interfaze only sends the streaming usage frame when include_usage is set.

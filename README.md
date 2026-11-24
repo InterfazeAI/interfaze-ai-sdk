@@ -19,9 +19,11 @@ Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaz
 
 ### Keyless access
 
-Keyless access is in the `Unreleased` section of the [changelog](./CHANGELOG.md). Version 1.0.3 and earlier require a key.
+Without an API key, the `interfaze` provider sends requests with no `Authorization` header. This works only from server-side code. Interfaze limits keyless requests from each IP address and does not accept them from a browser. A blank key counts as no key. See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) and the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
 
-In server-side code, you can call Interfaze without a key. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, the provider sends the request without an `Authorization` header. Interfaze limits the number of keyless requests from each IP address. A request over the limit gets a `429` error whose message tells you how to get a key (see [Errors](#errors)). In a browser, you must pass `apiKey`. See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) and the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
+Keyless access needs a release of `@interfaze-ai/ai-sdk` later than 1.0.3.
+
+The provider uses `apiKey` first, then `INTERFAZE_API_KEY`. An `Authorization` header that you set in `headers` counts as a key and goes out as you set it.
 
 ## Setup
 
