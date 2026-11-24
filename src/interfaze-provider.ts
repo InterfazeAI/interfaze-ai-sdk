@@ -103,8 +103,8 @@ export interface InterfazeProviderSettings {
   /**
    * API key; defaults to the `INTERFAZE_API_KEY` environment variable. Without
    * either, server-side requests omit the `Authorization` header and use
-   * keyless access. Runtimes without environment variables, such as
-   * browsers, must set this.
+   * keyless access. Browsers and runtimes without environment variables
+   * must set this.
    */
   apiKey?: string;
   /** Base URL for the API; defaults to {@link INTERFAZE_BASE_URL}. */
@@ -154,8 +154,10 @@ const isNonBlank = (value: string | undefined): value is string =>
 /**
  * Builds the `Authorization` header for one request. A nonblank `apiKey` wins
  * over a nonblank `INTERFAZE_API_KEY`. Without either, it returns no header,
- * so the request uses keyless access. Runtimes without `process` (browsers)
- * still need an explicit `apiKey` and fail before they send a request.
+ * so a server-side request uses keyless access. Without a key, runtimes
+ * without `process` fail before they send a request. Browsers (a global
+ * `document`) fail too, also with a `process` polyfill, because the API
+ * rejects keyless browser calls.
  */
 function authorizationHeader(apiKey: string | undefined): {
   Authorization?: string;
@@ -171,7 +173,14 @@ function authorizationHeader(apiKey: string | undefined): {
     settingValue: undefined,
     environmentVariableName: 'INTERFAZE_API_KEY',
   });
-  return isNonBlank(envKey) ? { Authorization: `Bearer ${envKey}` } : {};
+  if (isNonBlank(envKey)) return { Authorization: `Bearer ${envKey}` };
+  if ('document' in globalThis) {
+    throw new LoadAPIKeyError({
+      message:
+        "Interfaze API key is missing. Pass it using the 'apiKey' parameter. The API rejects keyless requests from browsers.",
+    });
+  }
+  return {};
 }
 
 /**

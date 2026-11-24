@@ -190,8 +190,8 @@ describe.each(modes)('$name authentication', ({ succeed, run }) => {
 describe('blank keys', () => {
   const [{ succeed, run }] = modes;
 
-  it('treats an empty INTERFAZE_API_KEY as unset', async () => {
-    vi.stubEnv('INTERFAZE_API_KEY', '');
+  it('treats a blank INTERFAZE_API_KEY as unset', async () => {
+    vi.stubEnv('INTERFAZE_API_KEY', '  ');
     const fetch = succeed();
     await run(createInterfaze({ fetch })('interfaze'));
 
@@ -220,5 +220,29 @@ describe('runtimes without process.env', () => {
     await expect(result).rejects.toSatisfy(LoadAPIKeyError.isInstance);
     vi.unstubAllGlobals();
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('browsers with a process polyfill', () => {
+  const [{ succeed, run }] = modes;
+
+  beforeEach(() => {
+    vi.stubGlobal('document', {});
+  });
+
+  it('requires a key and sends no request', async () => {
+    const fetch = succeed();
+
+    await expect(
+      run(createInterfaze({ fetch })('interfaze')),
+    ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends an explicit apiKey', async () => {
+    const fetch = succeed();
+    await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
+
+    expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
   });
 });

@@ -8,7 +8,7 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 
 ### Added
 
-- Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests without an `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access). Runtimes without environment variables, such as browsers, still need `apiKey`.
+- Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests without an `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access). Browsers and runtimes without environment variables still need `apiKey`: without a key, they throw `LoadAPIKeyError` before they send a request.
 
 ### Changed
 

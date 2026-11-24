@@ -21,7 +21,7 @@ Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaz
 
 Keyless access is in the `Unreleased` section of the [changelog](./CHANGELOG.md). Version 1.0.3 and earlier require a key.
 
-In server-side code, you can call Interfaze without a key. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, the provider sends the request without an `Authorization` header. Interfaze limits the number of keyless requests from each IP address. A request over the limit gets a `429` error whose message tells you how to get a key. In a browser, you must pass `apiKey`. See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) and the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
+In server-side code, you can call Interfaze without a key. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, the provider sends the request without an `Authorization` header. Interfaze limits the number of keyless requests from each IP address. A request over the limit gets a `429` error whose message tells you how to get a key (see [Errors](#errors)). In a browser, you must pass `apiKey`. See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) and the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
 
 ## Setup
 
@@ -298,17 +298,18 @@ const interfaze = createInterfaze({
 
 ## Errors
 
-Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body:
+Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body. By default the AI SDK retries `408`, `409`, `429` and `5xx` errors twice. When the last retry fails, it throws a `RetryError`, and `error.lastError` holds the `APICallError`:
 
 ```ts
-import { APICallError } from 'ai';
+import { APICallError, RetryError } from 'ai';
 
 try {
   await generateText({ model: interfaze('interfaze'), prompt: '...' });
 } catch (error) {
-  if (APICallError.isInstance(error)) {
-    error.statusCode; // e.g. 400, 401, 429
-    error.responseBody; // raw Interfaze error payload
+  const cause = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(cause)) {
+    cause.statusCode; // e.g. 400, 401, 429
+    cause.responseBody; // raw Interfaze error payload
   }
 }
 ```
