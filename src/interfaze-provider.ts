@@ -190,7 +190,7 @@ function withInterfazeFetch(base?: FetchFunction): FetchFunction {
     if (!headers.authorization && 'document' in globalThis) {
       throw new LoadAPIKeyError({
         message:
-          "Interfaze API key is missing. Pass it using the 'apiKey' parameter. The API rejects keyless requests from browsers.",
+          'Interfaze does not accept keyless requests from a browser. Pass an API key: `createInterfaze({ apiKey })`.',
       });
     }
     return (base ?? globalThis.fetch)(input, { ...init, headers });
