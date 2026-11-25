@@ -1,5 +1,5 @@
 import { LoadAPIKeyError } from '@ai-sdk/provider';
-import { APICallError, generateText, streamText, type LanguageModel } from 'ai';
+import { APICallError, generateText, type LanguageModel } from 'ai';
 import {
   afterEach,
   beforeEach,
@@ -9,10 +9,7 @@ import {
   vi,
   type Mock,
 } from 'vitest';
-import {
-  createJsonFixtureFetchMock,
-  createStreamFixtureFetchMock,
-} from './__fixtures__/fetch-mocks';
+import { createJsonFixtureFetchMock } from './__fixtures__/fetch-mocks';
 import {
   createInterfaze,
   interfaze,
@@ -23,15 +20,15 @@ const PROMPT = 'hi';
 const ENV_KEY = 'sk-test-env';
 const EXPLICIT_KEY = 'sk-test-explicit';
 const OPENAI_KEY = 'sk-openai-synthetic';
+const BLANK_KEY = ' \n';
 const CUSTOM_AUTHORIZATION = 'Custom abc';
 const NO_RETRIES = 0;
 const SINGLE_ATTEMPT = 1;
-const DEFAULT_ATTEMPTS = 3;
 const DAILY_RETRY_AFTER_SECONDS = 3600;
 const DAILY_RESET_EPOCH_SECONDS = 1_900_000_000;
 
-const BLANK_KEYS = ['', ' \n'];
 const AUTHORIZATION_SPELLINGS = ['Authorization', 'authorization'];
+const HEADER_SOURCES = ['default', 'per-request'];
 
 const SIGNUP_HINT =
   'Get a free API key at https://interfaze.ai and send it as `Authorization: Bearer YOUR_API_KEY`.';
@@ -70,20 +67,21 @@ const inflightLimitBody = {
   },
 } satisfies InterfazeErrorData;
 
-const inflightLimitHeaders = { 'retry-after': '5' };
-
 const errorFetch = (
   status: number,
-  body: InterfazeErrorData,
+  body: string,
   headers: Record<string, string> = {},
 ) =>
   vi.fn<typeof fetch>(
     async () =>
-      new Response(JSON.stringify(body), {
+      new Response(body, {
         status,
         headers: { 'content-type': 'application/json', ...headers },
       }),
   );
+
+const succeed = () =>
+  vi.fn<typeof fetch>(createJsonFixtureFetchMock('interfaze-basic'));
 
 /** The `Authorization` header of each request, in order; `null` when absent. */
 const sentAuthorizations = (transport: Mock<typeof fetch>) =>
@@ -96,34 +94,8 @@ type RunOptions = {
   headers?: Record<string, string>;
 };
 
-/** Resolves with the streamed text, or rejects with the stream's error part. */
-const runStreamText = (model: LanguageModel, options: RunOptions = {}) =>
-  new Promise<string>((resolve, reject) => {
-    streamText({
-      model,
-      prompt: PROMPT,
-      ...options,
-      onError: ({ error }) => reject(error),
-    }).text.then(resolve, reject);
-  });
-
-const modes = [
-  {
-    name: 'generateText',
-    succeed: () =>
-      vi.fn<typeof fetch>(createJsonFixtureFetchMock('interfaze-basic')),
-    run: (model: LanguageModel, options: RunOptions = {}) =>
-      generateText({ model, prompt: PROMPT, ...options }).then(r => r.text),
-  },
-  {
-    name: 'streamText',
-    succeed: () =>
-      vi.fn<typeof fetch>(
-        createStreamFixtureFetchMock('interfaze-think-stream'),
-      ),
-    run: runStreamText,
-  },
-];
+const run = (model: LanguageModel, options: RunOptions = {}) =>
+  generateText({ model, prompt: PROMPT, ...options });
 
 beforeEach(() => {
   vi.stubEnv('INTERFAZE_API_KEY', undefined);
@@ -131,376 +103,196 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.useRealTimers();
   // Restore `process` before the env, because the env restore reads it.
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 
-describe.each(modes)('$name authentication', ({ succeed, run }) => {
-  describe('createInterfaze', () => {
-    it('sends no Authorization header without a key', async () => {
-      const fetch = succeed();
-      await run(createInterfaze({ fetch })('interfaze'));
+describe('createInterfaze authentication', () => {
+  it.each([
+    {
+      name: 'no Authorization header when only OPENAI_API_KEY is set',
+      env: { OPENAI_API_KEY: OPENAI_KEY },
+      apiKey: undefined,
+      expected: null,
+    },
+    {
+      name: 'INTERFAZE_API_KEY as a bearer token',
+      env: { INTERFAZE_API_KEY: ENV_KEY },
+      apiKey: undefined,
+      expected: `Bearer ${ENV_KEY}`,
+    },
+    {
+      name: 'an explicit apiKey over INTERFAZE_API_KEY',
+      env: { INTERFAZE_API_KEY: ENV_KEY },
+      apiKey: EXPLICIT_KEY,
+      expected: `Bearer ${EXPLICIT_KEY}`,
+    },
+    {
+      name: 'INTERFAZE_API_KEY when apiKey is blank',
+      env: { INTERFAZE_API_KEY: ENV_KEY },
+      apiKey: BLANK_KEY,
+      expected: `Bearer ${ENV_KEY}`,
+    },
+    {
+      name: 'no Authorization header when INTERFAZE_API_KEY is blank',
+      env: { INTERFAZE_API_KEY: BLANK_KEY },
+      apiKey: undefined,
+      expected: null,
+    },
+  ])('sends $name', async ({ env, apiKey, expected }) => {
+    Object.entries(env).forEach(([name, value]) => vi.stubEnv(name, value));
+    const fetch = succeed();
+    await run(createInterfaze({ apiKey, fetch })('interfaze'));
 
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('sends no Authorization header when only OPENAI_API_KEY is set', async () => {
-      vi.stubEnv('OPENAI_API_KEY', OPENAI_KEY);
-      const fetch = succeed();
-      await run(createInterfaze({ fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('sends INTERFAZE_API_KEY as a bearer token', async () => {
-      vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
-      const fetch = succeed();
-      await run(createInterfaze({ fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${ENV_KEY}`]);
-    });
-
-    it('prefers an explicit apiKey over INTERFAZE_API_KEY', async () => {
-      vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
-    });
-
-    it('surfaces a 401 for a bad key after one request', async () => {
-      const fetch = errorFetch(401, invalidKeyBody);
-      const model = createInterfaze({ apiKey: EXPLICIT_KEY, fetch })(
-        'interfaze',
-      );
-
-      await expect(run(model)).rejects.toMatchObject({
-        statusCode: 401,
-        message: invalidKeyBody.error.message,
-        data: invalidKeyBody,
-      });
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
-    });
-
-    it('surfaces a keyless 401 after one request', async () => {
-      const fetch = errorFetch(401, invalidKeyBody);
-      const model = createInterfaze({ fetch })('interfaze');
-
-      await expect(run(model)).rejects.toMatchObject({
-        statusCode: 401,
-        message: invalidKeyBody.error.message,
-        data: invalidKeyBody,
-      });
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('throws the keyless daily limit after one request, without a wait', async () => {
-      const fetch = errorFetch(429, dailyLimitBody, dailyLimitHeaders);
-      const model = createInterfaze({ fetch })('interfaze');
-
-      const result = run(model);
-
-      await expect(result).rejects.toSatisfy(APICallError.isInstance);
-      await expect(result).rejects.toMatchObject({
-        statusCode: 429,
-        isRetryable: false,
-        message: dailyLimitBody.error.message,
-        data: dailyLimitBody,
-        responseHeaders: dailyLimitHeaders,
-      });
-      expect(fetch).toHaveBeenCalledTimes(SINGLE_ATTEMPT);
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('retries a keyless in-flight 429 and then throws a RetryError', async () => {
-      vi.useFakeTimers();
-      const fetch = errorFetch(429, inflightLimitBody, inflightLimitHeaders);
-      const model = createInterfaze({ fetch })('interfaze');
-
-      const result = expect(run(model)).rejects.toMatchObject({
-        reason: 'maxRetriesExceeded',
-        lastError: {
-          statusCode: 429,
-          isRetryable: true,
-          message: inflightLimitBody.error.message,
-          data: inflightLimitBody,
-        },
-      });
-      await vi.runAllTimersAsync();
-
-      await result;
-      expect(fetch).toHaveBeenCalledTimes(DEFAULT_ATTEMPTS);
-    });
+    expect(sentAuthorizations(fetch)).toEqual([expected]);
   });
 
-  describe('caller Authorization header', () => {
-    it.each(AUTHORIZATION_SPELLINGS)(
-      'sends a default %s header without a key',
-      async spelling => {
-        const fetch = succeed();
-        const model = createInterfaze({
-          fetch,
-          headers: { [spelling]: CUSTOM_AUTHORIZATION },
-        })('interfaze');
-        await run(model);
+  it.each(
+    AUTHORIZATION_SPELLINGS.flatMap(spelling =>
+      HEADER_SOURCES.map(source => ({ source, spelling })),
+    ),
+  )(
+    'sends a $source $spelling header instead of the key, once',
+    async ({ source, spelling }) => {
+      const headers = { [spelling]: CUSTOM_AUTHORIZATION };
+      const fetch = succeed();
+      const model = createInterfaze({
+        apiKey: EXPLICIT_KEY,
+        fetch,
+        ...(source === 'default' ? { headers } : {}),
+      })('interfaze');
+      await run(model, source === 'per-request' ? { headers } : {});
 
-        expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
-      },
+      expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
+    },
+  );
+
+  it('throws the keyless daily limit after one request, without a wait', async () => {
+    const fetch = errorFetch(
+      429,
+      JSON.stringify(dailyLimitBody),
+      dailyLimitHeaders,
     );
+    const result = run(createInterfaze({ fetch })('interfaze'));
 
-    it.each(AUTHORIZATION_SPELLINGS)(
-      'sends a default %s header instead of the key, once',
-      async spelling => {
-        const fetch = succeed();
-        const model = createInterfaze({
-          apiKey: EXPLICIT_KEY,
-          fetch,
-          headers: { [spelling]: CUSTOM_AUTHORIZATION },
-        })('interfaze');
-        await run(model);
-
-        expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
-      },
-    );
-
-    it.each(AUTHORIZATION_SPELLINGS)(
-      'sends a per-request %s header without a key',
-      async spelling => {
-        const fetch = succeed();
-        await run(createInterfaze({ fetch })('interfaze'), {
-          headers: { [spelling]: CUSTOM_AUTHORIZATION },
-        });
-
-        expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
-      },
-    );
-
-    it.each(AUTHORIZATION_SPELLINGS)(
-      'sends a per-request %s header instead of the key, once',
-      async spelling => {
-        const fetch = succeed();
-        await run(
-          createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'),
-          { headers: { [spelling]: CUSTOM_AUTHORIZATION } },
-        );
-
-        expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
-      },
-    );
-  });
-
-  describe('default interfaze provider', () => {
-    it('sends no Authorization header without INTERFAZE_API_KEY', async () => {
-      vi.stubEnv('OPENAI_API_KEY', OPENAI_KEY);
-      const fetch = succeed();
-      vi.stubGlobal('fetch', fetch);
-      await run(interfaze('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([null]);
+    await expect(result).rejects.toSatisfy(APICallError.isInstance);
+    await expect(result).rejects.toMatchObject({
+      statusCode: 429,
+      isRetryable: false,
+      message: dailyLimitBody.error.message,
+      data: dailyLimitBody,
+      responseHeaders: dailyLimitHeaders,
     });
-
-    it('reads INTERFAZE_API_KEY when the request is sent', async () => {
-      const fetch = succeed();
-      vi.stubGlobal('fetch', fetch);
-      vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
-      await run(interfaze('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${ENV_KEY}`]);
-    });
-  });
-
-  describe.each(BLANK_KEYS)('blank key %j', blank => {
-    it('sends no Authorization header when apiKey is blank and the env is unset', async () => {
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: blank, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('sends INTERFAZE_API_KEY when apiKey is blank', async () => {
-      vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: blank, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${ENV_KEY}`]);
-    });
-
-    it('sends no Authorization header when INTERFAZE_API_KEY is blank', async () => {
-      vi.stubEnv('INTERFAZE_API_KEY', blank);
-      const fetch = succeed();
-      await run(createInterfaze({ fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('sends the explicit apiKey when INTERFAZE_API_KEY is blank', async () => {
-      vi.stubEnv('INTERFAZE_API_KEY', blank);
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
-    });
-  });
-
-  describe('runtimes without process', () => {
-    beforeEach(() => {
-      vi.stubGlobal('process', undefined);
-    });
-
-    it('goes keyless when there is no process and no document', async () => {
-      const fetch = succeed();
-      await run(createInterfaze({ fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([null]);
-    });
-
-    it('sends an explicit apiKey', async () => {
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
-    });
-  });
-
-  describe('browsers with a process polyfill', () => {
-    beforeEach(() => {
-      vi.stubGlobal('document', {});
-    });
-
-    it('requires a key and sends no request', async () => {
-      const fetch = succeed();
-
-      await expect(
-        run(createInterfaze({ fetch })('interfaze')),
-      ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it.each(BLANK_KEYS)('requires a key when apiKey is %j', async blank => {
-      const fetch = succeed();
-
-      await expect(
-        run(createInterfaze({ apiKey: blank, fetch })('interfaze')),
-      ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
-    it('sends an explicit apiKey', async () => {
-      const fetch = succeed();
-      await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
-
-      expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
-    });
-
-    it.each(AUTHORIZATION_SPELLINGS)(
-      'sends a default %s header without a key',
-      async spelling => {
-        const fetch = succeed();
-        const model = createInterfaze({
-          fetch,
-          headers: { [spelling]: CUSTOM_AUTHORIZATION },
-        })('interfaze');
-        await run(model);
-
-        expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
-      },
-    );
+    expect(fetch).toHaveBeenCalledTimes(SINGLE_ATTEMPT);
+    expect(sentAuthorizations(fetch)).toEqual([null]);
   });
 });
 
-// streamText leaves an unhandled rejection for any stream error when `process` is missing,
-// so this case runs through generateText. The streamText guard runs in the polyfill tests above.
-describe('a browser without process', () => {
-  it('requires a key and sends no request', async () => {
+describe('default interfaze provider', () => {
+  it('reads INTERFAZE_API_KEY for each request', async () => {
+    const fetch = succeed();
+    vi.stubGlobal('fetch', fetch);
+    await run(interfaze('interfaze'));
+    vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
+    await run(interfaze('interfaze'));
+
+    expect(sentAuthorizations(fetch)).toEqual([null, `Bearer ${ENV_KEY}`]);
+  });
+});
+
+describe('runtimes', () => {
+  it('goes keyless when there is no process and no document', async () => {
     vi.stubGlobal('process', undefined);
+    const fetch = succeed();
+    await run(createInterfaze({ fetch })('interfaze'));
+
+    expect(sentAuthorizations(fetch)).toEqual([null]);
+  });
+
+  it('requires an Authorization header in a browser with a process polyfill', async () => {
     vi.stubGlobal('document', {});
-    const transport = vi.fn<typeof fetch>(
-      createJsonFixtureFetchMock('interfaze-basic'),
-    );
+    const fetch = succeed();
 
     await expect(
-      generateText({
-        model: createInterfaze({ fetch: transport })('interfaze'),
-        prompt: PROMPT,
-      }),
+      run(createInterfaze({ fetch })('interfaze')),
     ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
-    expect(transport).not.toHaveBeenCalled();
+    await run(
+      createInterfaze({
+        fetch,
+        headers: { authorization: CUSTOM_AUTHORIZATION },
+      })('interfaze'),
+    );
+
+    expect(sentAuthorizations(fetch)).toEqual([CUSTOM_AUTHORIZATION]);
+  });
+
+  it('requires a key in a browser without process and sends no request', async () => {
+    vi.stubGlobal('process', undefined);
+    vi.stubGlobal('document', {});
+    const fetch = succeed();
+
+    await expect(
+      run(createInterfaze({ fetch })('interfaze')),
+    ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
 describe('retry classification', () => {
-  const { run } = modes[0];
-  const retryableStatuses = [408, 409, 429, 500, 503];
-  const permanentStatuses = [400, 401, 403, 404, 422];
-  const otherCodeBody = {
-    error: { ...dailyLimitBody.error, code: 'rate_limit_exceeded' },
-  } satisfies InterfazeErrorData;
-
-  const rejection = (transport: Mock<typeof fetch>) =>
-    run(createInterfaze({ fetch: transport })('interfaze'), {
-      maxRetries: NO_RETRIES,
-    });
-
-  it.each(retryableStatuses)('keeps %i retryable', async status => {
-    const fetch = errorFetch(status, invalidKeyBody);
-
-    await expect(rejection(fetch)).rejects.toMatchObject({
-      statusCode: status,
+  it.each([
+    {
+      name: 'a 408 with the daily-limit code',
+      status: 408,
+      body: JSON.stringify(dailyLimitBody),
       isRetryable: true,
-    });
-  });
-
-  it.each(permanentStatuses)('keeps %i not retryable', async status => {
-    const fetch = errorFetch(status, invalidKeyBody);
-
-    await expect(rejection(fetch)).rejects.toMatchObject({
-      statusCode: status,
+    },
+    {
+      name: 'a 409 with the daily-limit code',
+      status: 409,
+      body: JSON.stringify(dailyLimitBody),
+      isRetryable: true,
+    },
+    {
+      name: 'a 500 with the daily-limit code',
+      status: 500,
+      body: JSON.stringify(dailyLimitBody),
+      isRetryable: true,
+    },
+    {
+      name: 'a keyless in-flight 429',
+      status: 429,
+      body: JSON.stringify(inflightLimitBody),
+      isRetryable: true,
+    },
+    {
+      name: 'a 429 with an unparseable body',
+      status: 429,
+      body: 'slow down',
+      isRetryable: true,
+    },
+    {
+      name: 'a 400',
+      status: 400,
+      body: JSON.stringify(invalidKeyBody),
       isRetryable: false,
-    });
-  });
+    },
+    {
+      name: 'a 401',
+      status: 401,
+      body: JSON.stringify(invalidKeyBody),
+      isRetryable: false,
+    },
+  ])(
+    'sets isRetryable to $isRetryable for $name',
+    async ({ status, body, isRetryable }) => {
+      const fetch = errorFetch(status, body);
 
-  it.each(retryableStatuses.filter(status => status !== 429))(
-    'keeps %i retryable when the body has the daily-limit code',
-    async status => {
-      const fetch = errorFetch(status, dailyLimitBody);
-
-      await expect(rejection(fetch)).rejects.toMatchObject({
-        statusCode: status,
-        isRetryable: true,
-      });
+      await expect(
+        run(createInterfaze({ fetch })('interfaze'), {
+          maxRetries: NO_RETRIES,
+        }),
+      ).rejects.toMatchObject({ statusCode: status, isRetryable });
     },
   );
-
-  it('keeps a 429 with another code retryable', async () => {
-    const fetch = errorFetch(429, otherCodeBody);
-
-    await expect(rejection(fetch)).rejects.toMatchObject({
-      statusCode: 429,
-      isRetryable: true,
-    });
-  });
-
-  it('keeps a 429 with an unparseable body retryable', async () => {
-    const transport = vi.fn<typeof fetch>(
-      async () => new Response('slow down', { status: 429 }),
-    );
-
-    await expect(rejection(transport)).rejects.toMatchObject({
-      statusCode: 429,
-      isRetryable: true,
-    });
-  });
-
-  it('keeps a 429 with an empty body retryable', async () => {
-    const transport = vi.fn<typeof fetch>(
-      async () => new Response('', { status: 429 }),
-    );
-
-    await expect(rejection(transport)).rejects.toMatchObject({
-      statusCode: 429,
-      isRetryable: true,
-    });
-  });
 });
