@@ -17,6 +17,17 @@ npm install @interfaze-ai/ai-sdk
 
 Set `INTERFAZE_API_KEY` in your environment (or pass `apiKey` to `createInterfaze`). Get a key from the [Interfaze dashboard](https://interfaze.ai).
 
+### Keyless access
+
+```ts
+// No API key: Interfaze applies per-IP keyless limits. Server-side code only.
+const interfaze = createInterfaze();
+```
+
+See [Try Interfaze without an API key](https://interfaze.ai/docs#try-interfaze-without-an-api-key) for the limits and rules.
+
+Keyless access needs a release of `@interfaze-ai/ai-sdk` later than 1.0.3.
+
 ## Setup
 
 Import the default `interfaze` instance, or build one with `createInterfaze`:
@@ -292,17 +303,18 @@ const interfaze = createInterfaze({
 
 ## Errors
 
-Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body:
+Interfaze errors surface as the AI SDK's `APICallError`, carrying the HTTP status and response body. By default the AI SDK retries `408`, `409`, `429` and `5xx` errors twice. When the last retry fails, it throws a `RetryError`, and `error.lastError` holds the `APICallError`. When the keyless daily limit is reached, the client throws the `429` and does not retry it while the reset is more than a minute away. If an earlier retry happened, the `APICallError` is the `lastError` of the `RetryError`.
 
 ```ts
-import { APICallError } from 'ai';
+import { APICallError, RetryError } from 'ai';
 
 try {
   await generateText({ model: interfaze('interfaze'), prompt: '...' });
 } catch (error) {
-  if (APICallError.isInstance(error)) {
-    error.statusCode; // e.g. 400, 401, 429
-    error.responseBody; // raw Interfaze error payload
+  const cause = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(cause)) {
+    cause.statusCode; // e.g. 400, 401, 429
+    cause.responseBody; // raw Interfaze error payload
   }
 }
 ```
@@ -323,7 +335,7 @@ try {
 
 ## Examples
 
-Runnable snippets in [`examples/`](./examples) — one per feature (quickstart, streaming, structured output, tools, reasoning, guardrails, multimodal, precontext, errors). Set `INTERFAZE_API_KEY`, then `npx tsx examples/quickstart.ts`.
+Runnable snippets in [`examples/`](./examples) — one per feature (quickstart, streaming, structured output, tools, reasoning, guardrails, multimodal, precontext, errors, keyless). Set `INTERFAZE_API_KEY`, then `npx tsx examples/quickstart.ts`.
 
 ## Documentation
 

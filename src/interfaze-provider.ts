@@ -1,11 +1,13 @@
 import type { ProviderErrorStructure } from '@ai-sdk/openai-compatible';
 import {
+  APICallError,
+  LoadAPIKeyError,
   NoSuchModelError,
   type LanguageModelV4,
   type ProviderV4,
 } from '@ai-sdk/provider';
 import {
-  loadApiKey,
+  loadOptionalSetting,
   withoutTrailingSlash,
   withUserAgentSuffix,
   type FetchFunction,
@@ -53,9 +55,30 @@ type _AssertErrorDataMatchesSchema = Assert<
 
 const HTTPS_URL = /^https:\/\/.+$/;
 
+const HTTP_TOO_MANY_REQUESTS = 429;
+const KEYLESS_DAILY_LIMIT_CODE = 'keyless_daily_limit_exceeded';
+
+// A keyless daily limit lasts for hours, so a retry cannot succeed. Every
+// other error keeps the default retry rule of `APICallError`.
+const isRetryableResponse = (
+  response: Response,
+  error?: InterfazeErrorData,
+): boolean =>
+  new APICallError({
+    message: '',
+    url: '',
+    requestBodyValues: {},
+    statusCode: response.status,
+  }).isRetryable &&
+  !(
+    response.status === HTTP_TOO_MANY_REQUESTS &&
+    error?.error.code === KEYLESS_DAILY_LIMIT_CODE
+  );
+
 const interfazeErrorStructure: ProviderErrorStructure<InterfazeErrorData> = {
   errorSchema: interfazeErrorSchema,
   errorToMessage: data => data.error.message,
+  isRetryable: isRetryableResponse,
 };
 
 /** Serialize guardrail categories into a `<guard>…</guard>` system message. */
@@ -99,7 +122,11 @@ function transformInterfazeRequestBody(
 
 /** Configuration for {@link createInterfaze}. */
 export interface InterfazeProviderSettings {
-  /** API key; defaults to the `INTERFAZE_API_KEY` environment variable. */
+  /**
+   * API key; defaults to the `INTERFAZE_API_KEY` environment variable. Without
+   * either, server-side requests omit the `Authorization` header and use
+   * keyless access. Browsers must set this or an `Authorization` header.
+   */
   apiKey?: string;
   /** Base URL for the API; defaults to {@link INTERFAZE_BASE_URL}. */
   baseURL?: string;
@@ -126,18 +153,73 @@ export interface InterfazeProvider extends ProviderV4 {
   textEmbeddingModel(modelId: string): never;
 }
 
+const nonBlank = (value: string | undefined): string | undefined =>
+  value?.trim() || undefined;
+
 /**
- * Appends this package's user-agent token at send time. Putting it in the
- * provider's static headers does not work: the AI SDK core sets its own
- * `user-agent` on the per-call headers, which win the header merge and
- * silently replace anything the provider configured.
+ * Resolves the API key: a nonblank `apiKey` wins over a nonblank
+ * `INTERFAZE_API_KEY`. Runtimes without `process` have no environment key.
  */
-function withInterfazeUserAgent(base?: FetchFunction): FetchFunction {
-  return (input, init) => {
-    const headers = withUserAgentSuffix(
+const resolveApiKey = (apiKey: string | undefined): string | undefined =>
+  nonBlank(apiKey) ??
+  nonBlank(
+    loadOptionalSetting({
+      settingValue: undefined,
+      environmentVariableName: 'INTERFAZE_API_KEY',
+    }),
+  );
+
+// A blank caller `Authorization` header counts as unset, so it cannot replace the key.
+const withoutBlankAuthorization = (
+  headers: Record<string, string> = {},
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(headers).filter(
+      ([name, value]) =>
+        name.toLowerCase() !== 'authorization' || nonBlank(value),
+    ),
+  );
+
+// Browser workers define `importScripts`. Cloudflare Workers define
+// `WorkerGlobalScope` but not `importScripts`, and they stay keyless.
+const isBrowserRuntime = (): boolean =>
+  'document' in globalThis ||
+  typeof Reflect.get(globalThis, 'importScripts') === 'function';
+
+const KEYLESS_WARNING =
+  'Interfaze SDK is running in keyless mode. For higher rate limits, get an API key at https://interfaze.ai/dashboard.';
+
+// Records whether this process has shown the keyless warning.
+const keylessWarning = { shown: false };
+
+// Warns at the first keyless request of the process.
+const warnKeyless = (): void => {
+  if (keylessWarning.shown) return;
+  keylessWarning.shown = true;
+  console.warn(KEYLESS_WARNING);
+};
+
+/**
+ * Wraps `fetch` at send time. It appends this package's user-agent token.
+ * Putting the token in the provider's static headers does not work: the AI SDK
+ * core sets its own `user-agent` on the per-call headers, which win the header
+ * merge and silently replace anything the provider configured.
+ * It also refuses a keyless request in a browser page or a browser worker.
+ */
+function withInterfazeFetch(base?: FetchFunction): FetchFunction {
+  return async (input, init) => {
+    const { authorization, ...rest } = withUserAgentSuffix(
       init?.headers ?? {},
       `@interfaze-ai/ai-sdk/${VERSION}`,
     );
+    const headers = nonBlank(authorization) ? { ...rest, authorization } : rest;
+    if (!headers.authorization && isBrowserRuntime()) {
+      throw new LoadAPIKeyError({
+        message:
+          'Interfaze does not accept keyless requests from a browser. Pass an API key: `createInterfaze({ apiKey })`.',
+      });
+    }
+    if (!headers.authorization) warnKeyless();
     return (base ?? globalThis.fetch)(input, { ...init, headers });
   };
 }
@@ -164,24 +246,27 @@ export function createInterfaze(
   options: InterfazeProviderSettings = {},
 ): InterfazeProvider {
   const baseURL = withoutTrailingSlash(options.baseURL ?? INTERFAZE_BASE_URL);
-  const getHeaders = () => ({
-    Authorization: `Bearer ${loadApiKey({
-      apiKey: options.apiKey,
-      environmentVariableName: 'INTERFAZE_API_KEY',
-      description: 'Interfaze API key',
-    })}`,
-    ...(options.showAdditionalInfo ? { 'x-show-additional-info': 'true' } : {}),
-    ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
-    ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
-    ...options.headers,
-  });
+  // Resolves the key for each request. A caller `Authorization` header in
+  // `headers` or in the per-request headers replaces the key header.
+  const getHeaders = () => {
+    const apiKey = resolveApiKey(options.apiKey);
+    return {
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      ...(options.showAdditionalInfo
+        ? { 'x-show-additional-info': 'true' }
+        : {}),
+      ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
+      ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
+      ...withoutBlankAuthorization(options.headers),
+    };
+  };
 
   const createLanguageModel = (modelId: InterfazeChatModelId) => {
     return new InterfazeChatLanguageModel(modelId, {
       provider: `interfaze.chat`,
       url: ({ path }) => `${baseURL}${path}`,
       headers: getHeaders,
-      fetch: withInterfazeUserAgent(options.fetch),
+      fetch: withInterfazeFetch(options.fetch),
       errorStructure: interfazeErrorStructure,
       supportsStructuredOutputs: true,
       // Interfaze only sends the streaming usage frame when include_usage is set.
@@ -219,5 +304,8 @@ export function createInterfaze(
   return provider;
 }
 
-/** Default provider instance, configured from the environment (`INTERFAZE_API_KEY`). */
+/**
+ * Default provider instance. It reads `INTERFAZE_API_KEY` for each request and
+ * uses keyless access when the variable is unset.
+ */
 export const interfaze: InterfazeProvider = createInterfaze();

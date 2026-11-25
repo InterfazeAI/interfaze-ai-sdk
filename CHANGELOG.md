@@ -4,6 +4,21 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests with no `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
+- Runtimes without `process`, such as Cloudflare Workers without `nodejs_compat`, send keyless requests. They read no environment key.
+- An `Authorization` header that you set in `headers` or in the per-request headers counts as a key. The provider sends it as you set it, in any letter case, and sends no second `Authorization` header.
+- A keyless provider warns once per process with `console.warn`, at the first keyless request. A key or an `Authorization` header gives no warning.
+
+### Changed
+
+- When the keyless daily limit is reached, the client throws the `429` and does not retry it while the reset is more than a minute away. The error has the code `keyless_daily_limit_exceeded` and is an `APICallError` with `isRetryable: false`. If an earlier retry happened, it is the `lastError` of the `RetryError`. Other `429` errors, such as the in-flight limit, and all other statuses keep the AI SDK retry default.
+- Without a key, browsers (a global `document`) and browser workers (a global `importScripts`) throw `LoadAPIKeyError` before the provider sends a request. Cloudflare Workers and Vercel Edge stay keyless. The check does not depend on `process`, so a bundler's `process` polyfill does not change it. A key or an `Authorization` header skips the check.
+- An empty or whitespace-only `apiKey` falls back to `INTERFAZE_API_KEY`, and an empty or whitespace-only `INTERFAZE_API_KEY` counts as unset. Neither sends an empty `Bearer` header.
+
 ## [1.0.3]
 
 Moves the documented call surface onto the AI SDK v7 APIs, hardens the file-part
