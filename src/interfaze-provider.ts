@@ -169,6 +169,12 @@ const resolveApiKey = (apiKey: string | undefined): string | undefined =>
     }),
   );
 
+// Browser workers define `importScripts`. Cloudflare Workers define
+// `WorkerGlobalScope` but not `importScripts`, and they stay keyless.
+const isBrowserRuntime = (): boolean =>
+  'document' in globalThis ||
+  typeof Reflect.get(globalThis, 'importScripts') === 'function';
+
 /**
  * Wraps `fetch` at send time. It appends this package's user-agent token.
  * Putting the token in the provider's static headers does not work: the AI SDK
@@ -180,12 +186,6 @@ const resolveApiKey = (apiKey: string | undefined): string | undefined =>
  * or a browser worker, even if a bundler polyfills `process`. The header can
  * come from the key, from `headers` or from the per-request headers.
  */
-// Browser workers define `importScripts`. Cloudflare Workers define
-// `WorkerGlobalScope` but not `importScripts`, and they stay keyless.
-const isBrowserRuntime = (): boolean =>
-  'document' in globalThis ||
-  typeof Reflect.get(globalThis, 'importScripts') === 'function';
-
 function withInterfazeFetch(base?: FetchFunction): FetchFunction {
   return async (input, init) => {
     const headers = withUserAgentSuffix(
