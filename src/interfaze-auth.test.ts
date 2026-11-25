@@ -173,6 +173,42 @@ describe('createInterfaze authentication', () => {
     },
   );
 
+  it.each([
+    {
+      name: 'no Authorization header without a key',
+      apiKey: undefined,
+      expected: null,
+    },
+    {
+      name: 'the key with a key',
+      apiKey: EXPLICIT_KEY,
+      expected: `Bearer ${EXPLICIT_KEY}`,
+    },
+  ])(
+    'treats a blank caller Authorization header as unset: sends $name',
+    async ({ apiKey, expected }) => {
+      const fetch = succeed();
+      await run(
+        createInterfaze({
+          apiKey,
+          fetch,
+          headers: { Authorization: BLANK_KEY },
+        })('interfaze'),
+      );
+
+      expect(sentAuthorizations(fetch)).toEqual([expected]);
+    },
+  );
+
+  it('sends no Authorization header for a blank per-request header without a key', async () => {
+    const fetch = succeed();
+    await run(createInterfaze({ fetch })('interfaze'), {
+      headers: { Authorization: BLANK_KEY },
+    });
+
+    expect(sentAuthorizations(fetch)).toEqual([null]);
+  });
+
   it('throws the keyless daily limit after one request, without a wait', async () => {
     const fetch = errorFetch(
       429,

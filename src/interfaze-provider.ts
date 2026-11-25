@@ -169,6 +169,17 @@ const resolveApiKey = (apiKey: string | undefined): string | undefined =>
     }),
   );
 
+// A blank caller `Authorization` header counts as unset, so it cannot replace the key.
+const withoutBlankAuthorization = (
+  headers: Record<string, string> = {},
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(headers).filter(
+      ([name, value]) =>
+        name.toLowerCase() !== 'authorization' || nonBlank(value),
+    ),
+  );
+
 // Browser workers define `importScripts`. Cloudflare Workers define
 // `WorkerGlobalScope` but not `importScripts`, and they stay keyless.
 const isBrowserRuntime = (): boolean =>
@@ -193,18 +204,15 @@ const warnKeyless = (): void => {
  * Putting the token in the provider's static headers does not work: the AI SDK
  * core sets its own `user-agent` on the per-call headers, which win the header
  * merge and silently replace anything the provider configured.
- *
- * It also guards browsers. The API rejects keyless browser calls, so a request
- * without an `Authorization` header fails here with `LoadAPIKeyError` in a page
- * or a browser worker, even if a bundler polyfills `process`. The header can
- * come from the key, from `headers` or from the per-request headers.
+ * It also refuses a keyless request in a browser page or a browser worker.
  */
 function withInterfazeFetch(base?: FetchFunction): FetchFunction {
   return async (input, init) => {
-    const headers = withUserAgentSuffix(
+    const { authorization, ...rest } = withUserAgentSuffix(
       init?.headers ?? {},
       `@interfaze-ai/ai-sdk/${VERSION}`,
     );
+    const headers = nonBlank(authorization) ? { ...rest, authorization } : rest;
     if (!headers.authorization && isBrowserRuntime()) {
       throw new LoadAPIKeyError({
         message:
@@ -249,7 +257,7 @@ export function createInterfaze(
         : {}),
       ...(options.bypassMoA ? { 'x-interfaze-bypass-moa': 'true' } : {}),
       ...(options.bypassCache ? { 'x-interfaze-bypass-cache': 'true' } : {}),
-      ...options.headers,
+      ...withoutBlankAuthorization(options.headers),
     };
   };
 
