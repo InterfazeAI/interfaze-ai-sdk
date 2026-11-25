@@ -11,6 +11,7 @@ All notable changes to `@interfaze-ai/ai-sdk` are documented here. The format fo
 - Keyless access for server-side calls. When you pass no `apiKey` and `INTERFAZE_API_KEY` is unset, `createInterfaze` and the default `interfaze` provider send `generateText` and `streamText` requests with no `Authorization` header, instead of throwing `LoadAPIKeyError`. Interfaze limits keyless requests from each IP address. See the [keyless limits](https://interfaze.ai/docs/limits#keyless-access).
 - Runtimes without `process`, such as Cloudflare Workers without `nodejs_compat`, send keyless requests. They read no environment key.
 - An `Authorization` header that you set in `headers` or in the per-request headers counts as a key. The provider sends it as you set it, in any letter case, and sends no second `Authorization` header.
+- A keyless provider warns once per process with `console.warn`, at the first keyless request. A key or an `Authorization` header gives no warning.
 
 ### Changed
 

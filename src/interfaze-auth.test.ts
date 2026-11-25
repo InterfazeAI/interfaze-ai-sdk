@@ -22,6 +22,8 @@ const EXPLICIT_KEY = 'sk-test-explicit';
 const OPENAI_KEY = 'sk-openai-synthetic';
 const BLANK_KEY = ' \n';
 const CUSTOM_AUTHORIZATION = 'Custom abc';
+const KEYLESS_WARNING =
+  'Interfaze SDK is running in keyless mode. For higher rate limits, get an API key at https://interfaze.ai/dashboard.';
 const NO_RETRIES = 0;
 const SINGLE_ATTEMPT = 1;
 const DAILY_RETRY_AFTER_SECONDS = 3600;
@@ -101,12 +103,14 @@ beforeEach(() => {
   vi.stubEnv('INTERFAZE_API_KEY', undefined);
   vi.stubEnv('OPENAI_API_KEY', undefined);
   vi.stubEnv('OPENAI_ADMIN_KEY', undefined);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
   // Restore `process` before the env, because the env restore reads it.
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe('createInterfaze authentication', () => {
@@ -264,6 +268,48 @@ describe('runtimes', () => {
     await run(createInterfaze({ fetch })('interfaze'));
 
     expect(sentAuthorizations(fetch)).toEqual([null]);
+  });
+});
+
+describe('keyless warning', () => {
+  // A fresh module has a fresh once-per-process flag.
+  const freshCreateInterfaze = async () => {
+    vi.resetModules();
+    return (await import('./interfaze-provider')).createInterfaze;
+  };
+
+  it('warns once per process at the first keyless request', async () => {
+    const createFresh = await freshCreateInterfaze();
+    const fetch = succeed();
+    const first = createFresh({ fetch })('interfaze');
+    expect(console.warn).not.toHaveBeenCalled();
+
+    await run(first);
+    await run(first);
+    await run(createFresh({ fetch })('interfaze'));
+
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(KEYLESS_WARNING);
+  });
+
+  it.each([
+    { name: 'an apiKey', options: { apiKey: EXPLICIT_KEY } },
+    {
+      name: 'an Authorization header',
+      options: { headers: { Authorization: CUSTOM_AUTHORIZATION } },
+    },
+  ])('does not warn with $name', async ({ options }) => {
+    const createFresh = await freshCreateInterfaze();
+    await run(createFresh({ ...options, fetch: succeed() })('interfaze'));
+
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('does not warn with INTERFAZE_API_KEY', async () => {
+    vi.stubEnv('INTERFAZE_API_KEY', ENV_KEY);
+    const createFresh = await freshCreateInterfaze();
+    await run(createFresh({ fetch: succeed() })('interfaze'));
+
+    expect(console.warn).not.toHaveBeenCalled();
   });
 });
 

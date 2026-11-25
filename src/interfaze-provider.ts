@@ -175,6 +175,19 @@ const isBrowserRuntime = (): boolean =>
   'document' in globalThis ||
   typeof Reflect.get(globalThis, 'importScripts') === 'function';
 
+const KEYLESS_WARNING =
+  'Interfaze SDK is running in keyless mode. For higher rate limits, get an API key at https://interfaze.ai/dashboard.';
+
+// Records whether this process has shown the keyless warning.
+const keylessWarning = { shown: false };
+
+// Warns at the first keyless request of the process.
+const warnKeyless = (): void => {
+  if (keylessWarning.shown) return;
+  keylessWarning.shown = true;
+  console.warn(KEYLESS_WARNING);
+};
+
 /**
  * Wraps `fetch` at send time. It appends this package's user-agent token.
  * Putting the token in the provider's static headers does not work: the AI SDK
@@ -198,6 +211,7 @@ function withInterfazeFetch(base?: FetchFunction): FetchFunction {
           'Interfaze does not accept keyless requests from a browser. Pass an API key: `createInterfaze({ apiKey })`.',
       });
     }
+    if (!headers.authorization) warnKeyless();
     return (base ?? globalThis.fetch)(input, { ...init, headers });
   };
 }
