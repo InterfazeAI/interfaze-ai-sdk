@@ -1,5 +1,6 @@
 import type { ProviderErrorStructure } from '@ai-sdk/openai-compatible';
 import {
+  APICallError,
   LoadAPIKeyError,
   NoSuchModelError,
   type LanguageModelV4,
@@ -57,20 +58,18 @@ const HTTPS_URL = /^https:\/\/.+$/;
 const HTTP_TOO_MANY_REQUESTS = 429;
 const KEYLESS_DAILY_LIMIT_CODE = 'keyless_daily_limit_exceeded';
 
-// Mirrors the retry default of `APICallError`: 408, 409, 429 and 5xx.
-const isRetryableStatus = (status: number): boolean =>
-  status === 408 ||
-  status === 409 ||
-  status === HTTP_TOO_MANY_REQUESTS ||
-  status >= 500;
-
 // A keyless daily limit lasts for hours, so a retry cannot succeed. Every
-// other error keeps the default retry rule.
+// other error keeps the default retry rule of `APICallError`.
 const isRetryableResponse = (
   response: Response,
   error?: InterfazeErrorData,
 ): boolean =>
-  isRetryableStatus(response.status) &&
+  new APICallError({
+    message: '',
+    url: '',
+    requestBodyValues: {},
+    statusCode: response.status,
+  }).isRetryable &&
   !(
     response.status === HTTP_TOO_MANY_REQUESTS &&
     error?.error.code === KEYLESS_DAILY_LIMIT_CODE
