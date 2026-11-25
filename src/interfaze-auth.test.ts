@@ -100,6 +100,7 @@ const run = (model: LanguageModel, options: RunOptions = {}) =>
 beforeEach(() => {
   vi.stubEnv('INTERFAZE_API_KEY', undefined);
   vi.stubEnv('OPENAI_API_KEY', undefined);
+  vi.stubEnv('OPENAI_ADMIN_KEY', undefined);
 });
 
 afterEach(() => {
@@ -236,6 +237,33 @@ describe('runtimes', () => {
       run(createInterfaze({ fetch })('interfaze')),
     ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('requires a key in a browser worker and sends no request', async () => {
+    vi.stubGlobal('importScripts', () => {});
+    const fetch = succeed();
+
+    await expect(
+      run(createInterfaze({ fetch })('interfaze')),
+    ).rejects.toSatisfy(LoadAPIKeyError.isInstance);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends the key from a browser worker', async () => {
+    vi.stubGlobal('importScripts', () => {});
+    const fetch = succeed();
+    await run(createInterfaze({ apiKey: EXPLICIT_KEY, fetch })('interfaze'));
+
+    expect(sentAuthorizations(fetch)).toEqual([`Bearer ${EXPLICIT_KEY}`]);
+  });
+
+  it('goes keyless in a Cloudflare Worker', async () => {
+    vi.stubGlobal('WorkerGlobalScope', class {});
+    vi.stubGlobal('ServiceWorkerGlobalScope', class {});
+    const fetch = succeed();
+    await run(createInterfaze({ fetch })('interfaze'));
+
+    expect(sentAuthorizations(fetch)).toEqual([null]);
   });
 });
 

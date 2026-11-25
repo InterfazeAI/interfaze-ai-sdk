@@ -176,17 +176,23 @@ const resolveApiKey = (apiKey: string | undefined): string | undefined =>
  * merge and silently replace anything the provider configured.
  *
  * It also guards browsers. The API rejects keyless browser calls, so a request
- * without an `Authorization` header fails here with `LoadAPIKeyError` when
- * `document` exists, even if a bundler polyfills `process`. The header can come
- * from the key, from `headers` or from the per-request headers.
+ * without an `Authorization` header fails here with `LoadAPIKeyError` in a page
+ * or a browser worker, even if a bundler polyfills `process`. The header can
+ * come from the key, from `headers` or from the per-request headers.
  */
+// Browser workers define `importScripts`. Cloudflare Workers define
+// `WorkerGlobalScope` but not `importScripts`, and they stay keyless.
+const isBrowserRuntime = (): boolean =>
+  'document' in globalThis ||
+  typeof Reflect.get(globalThis, 'importScripts') === 'function';
+
 function withInterfazeFetch(base?: FetchFunction): FetchFunction {
   return async (input, init) => {
     const headers = withUserAgentSuffix(
       init?.headers ?? {},
       `@interfaze-ai/ai-sdk/${VERSION}`,
     );
-    if (!headers.authorization && 'document' in globalThis) {
+    if (!headers.authorization && isBrowserRuntime()) {
       throw new LoadAPIKeyError({
         message:
           'Interfaze does not accept keyless requests from a browser. Pass an API key: `createInterfaze({ apiKey })`.',
